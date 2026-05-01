@@ -4,8 +4,8 @@
 > self-contained Wine 11.0 + Apple Game Porting Toolkit 3.0 runtime in a
 > small native macOS app.
 
-[![macOS 14+](https://img.shields.io/badge/macOS-14%2B-blue)](#)
-[![Apple Silicon](https://img.shields.io/badge/arch-Apple%20Silicon-blue)](#)
+![macOS 14+](https://img.shields.io/badge/macOS-14%2B-blue)
+![Apple Silicon](https://img.shields.io/badge/arch-Apple%20Silicon-blue)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
 <p align="center">
@@ -113,10 +113,8 @@ build it yourself from CrossOver's LGPL source release:
 4. Symlink `lib/wine/x86_64-unix/d3d12.so → ../external/libd3dshared.dylib`
    (and the same for `dxgi.so`, `d3d11.so`, `winemetal.so`)
 
-The parent project [diablo4-wine-fix](https://github.com/MichaelLod/diablo4-wine-fix)
-contains scripts that automate this. We aim to publish a prebuilt
-runtime tarball alongside D4Mac releases so casual users can skip the
-Wine compile.
+We aim to publish a prebuilt runtime tarball alongside D4Mac releases so
+casual users can skip the Wine compile.
 
 ## Why CrossOver charges $74 and we don't
 
@@ -141,13 +139,12 @@ their own licences — see [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md):
 | Microsoft VC++ Redistributable | MS DirectX SDK redistributable |
 | MS Core Fonts For The Web | symlinks to macOS's pre-licensed copy |
 | MoltenVK | Apache 2.0 |
-| DXMT (winemetal MTL bindings, optional) | MIT (LGPL after v0.80) |
 
 ## Contributing
 
-Issues + PRs welcome. The launcher Swift code is small (~600 LoC across
-five files); the hard work is the Wine runtime which lives in the parent
-project.
+Issues + PRs welcome. The launcher Swift code is small (~1,000 LoC
+across six files); the hard work sits in the Wine runtime build, which
+the README's "Wine runtime" section walks through.
 
 ## Acknowledgements
 

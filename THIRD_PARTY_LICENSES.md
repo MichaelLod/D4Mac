@@ -43,9 +43,7 @@ at [media.codeweavers.com/pub/crossover/source/](https://media.codeweavers.com/p
 with no additional patches in our scaffolding (the `dlls/winemetal/` etc.
 directories from earlier development were removed from the build —
 D4Mac uses Apple's GPTK PE forwarders instead). The complete
-corresponding source is available at the upstream URL and via
-the parent [diablo4-wine-fix](https://github.com/MichaelLod/diablo4-wine-fix)
-project's tarball.
+corresponding source is available at the upstream URL.
 
 ## MoltenVK
 

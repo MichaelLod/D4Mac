@@ -84,7 +84,7 @@ struct SettingsView: View {
                 creditLine("Apple D3DMetal & libd3dshared", "Apple GPTK License (non-commercial redistribution)")
                 creditLine("Wine 11.0", "LGPL 2.1")
                 creditLine("MoltenVK", "Apache 2.0")
-                creditLine("DXMT (winemetal MTL bindings)", "MIT")
+                creditLine("Microsoft VC++ Redistributable", "MS redistributable terms")
             }
             .font(.callout)
             Spacer()
