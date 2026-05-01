@@ -36,5 +36,16 @@
     <false/>
     <key>NSPrincipalClass</key>
     <string>NSApplication</string>
+    <key>CFBundleURLTypes</key>
+    <array>
+        <dict>
+            <key>CFBundleURLName</key>
+            <string>app.d4mac.activate</string>
+            <key>CFBundleURLSchemes</key>
+            <array>
+                <string>d4mac</string>
+            </array>
+        </dict>
+    </array>
 </dict>
 </plist>

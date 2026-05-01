@@ -85,9 +85,25 @@ If a future macOS removes these fonts, D4Mac will silently skip the ones
 not present. Users can run `winetricks corefonts` inside the bottle as a
 fallback (downloads from the original SourceForge mirror).
 
-## DXMT (optional)
+## DXMT v0.72
 
-If a future build of D4Mac includes [3Shain/dxmt](https://github.com/3Shain/dxmt)
-for D3D11 games (currently we use Apple's GPTK D3D11 forwarder
-instead), DXMT is licensed under MIT (versions through 0.80) and LGPL
-(after 0.80). DXMT is not bundled in the current build.
+**Files in bundle**:
+- `Contents/SharedSupport/Wine/lib/external/dxmt/i386-windows/{d3d11,d3d10core,dxgi,winemetal}.dll`
+- `Contents/SharedSupport/Wine/lib/external/dxmt/x86_64-windows/{d3d11,d3d10core,dxgi,winemetal,nvapi64,nvngx}.dll`
+- `Contents/SharedSupport/Wine/lib/external/dxmt/x86_64-unix/winemetal.so`
+- The 32-bit DLLs are deployed to `bottle/drive_c/windows/syswow64/` at first
+  run, replacing Wine's reimpl with DXMT's D3D11→Metal translator. The
+  unix bridge is also installed at `lib/wine/x86_64-unix/winemetal.so`.
+
+**Why bundled**: Battle.net's CEF (Chromium Embedded Framework) is 32-bit
+and needs a real D3D11 backend. Apple's GPTK ships only 64-bit D3D11
+forwarders, so without DXMT the BNet launcher window fails to render.
+With DXMT in syswow64 + D3DMetal in system32, the runtime supports both
+D3D11 (BNet) and D3D12 (Diablo IV) simultaneously.
+
+**Licence**: MIT (Copyright 2023 Feifan He). See
+`lib/external/dxmt/LICENSE` in the bundle. v0.81+ switched to LGPL; we
+ship v0.72 to keep the MIT terms.
+
+**Source**: [github.com/3Shain/dxmt](https://github.com/3Shain/dxmt) at
+the v0.72 tag.

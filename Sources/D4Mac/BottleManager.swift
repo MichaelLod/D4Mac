@@ -85,6 +85,8 @@ final class BottleManager: ObservableObject {
     var wineserverBin: URL { wineRuntime.appendingPathComponent("bin/wineserver") }
     var libExternal: URL { wineRuntime.appendingPathComponent("lib/external") }
     var gptkPEDir: URL { wineRuntime.appendingPathComponent("lib/wine/x86_64-windows") }
+    var dxmt32Dir: URL { wineRuntime.appendingPathComponent("lib/external/dxmt/i386-windows") }
+    var dxmt64Dir: URL { wineRuntime.appendingPathComponent("lib/external/dxmt/x86_64-windows") }
 
     /// Path to BNet's main executable inside the bottle, if installed.
     var bnetExe: URL {
@@ -96,6 +98,10 @@ final class BottleManager: ObservableObject {
 
     var systemDir32: URL {
         bottleRoot.appendingPathComponent("drive_c/windows/system32", isDirectory: true)
+    }
+
+    var systemDirWow64: URL {
+        bottleRoot.appendingPathComponent("drive_c/windows/syswow64", isDirectory: true)
     }
 
     // MARK: - State refresh
@@ -170,6 +176,7 @@ final class BottleManager: ObservableObject {
         // get fixed too if they predate this code.
         try? await disableCrashDialog()
         try await deployGPTKBinaries()
+        try await deployDXMTBinaries()
         try installCoreFonts()
         try await installPrerequisites()
     }
@@ -346,6 +353,47 @@ final class BottleManager: ObservableObject {
             guard fm.fileExists(atPath: p.path) else { continue }
             try? fm.removeItem(at: a)
             try? fm.linkItem(at: p, to: a)
+        }
+    }
+
+    /// Replace Wine's stock 32-bit `d3d11`/`d3d10core`/`dxgi`/`winemetal` in
+    /// the bottle's syswow64 with DXMT's, giving 32-bit processes (notably
+    /// Battle.net's CEF) a real D3D11→Metal backend. D3DMetal's 64-bit
+    /// forwarders in system32 stay untouched so D4's D3D12 path is unaffected.
+    /// 64-bit `winemetal.dll` in system32 is also swapped to the DXMT version
+    /// so it pairs correctly with the DXMT `winemetal.so` bridge that ships
+    /// in the runtime (replacing the D3DMetal libd3dshared symlink).
+    private func deployDXMTBinaries() async throws {
+        let fm = FileManager.default
+
+        guard fm.fileExists(atPath: dxmt32Dir.appendingPathComponent("d3d11.dll").path) else {
+            log.info("DXMT not staged in runtime; skipping DXMT deploy")
+            return
+        }
+
+        try fm.createDirectory(at: systemDirWow64, withIntermediateDirectories: true)
+
+        for dll in ["d3d11.dll", "d3d10core.dll", "dxgi.dll", "winemetal.dll"] {
+            let src = dxmt32Dir.appendingPathComponent(dll)
+            let dst = systemDirWow64.appendingPathComponent(dll)
+            guard fm.fileExists(atPath: src.path) else { continue }
+            let bak = systemDirWow64.appendingPathComponent("\(dll).before-dxmt")
+            if fm.fileExists(atPath: dst.path) && !fm.fileExists(atPath: bak.path) {
+                try? fm.moveItem(at: dst, to: bak)
+            }
+            try? fm.removeItem(at: dst)
+            try fm.copyItem(at: src, to: dst)
+        }
+
+        let metalSrc = dxmt64Dir.appendingPathComponent("winemetal.dll")
+        if fm.fileExists(atPath: metalSrc.path) {
+            let metalDst = systemDir32.appendingPathComponent("winemetal.dll")
+            let metalBak = systemDir32.appendingPathComponent("winemetal.dll.before-dxmt")
+            if fm.fileExists(atPath: metalDst.path) && !fm.fileExists(atPath: metalBak.path) {
+                try? fm.moveItem(at: metalDst, to: metalBak)
+            }
+            try? fm.removeItem(at: metalDst)
+            try fm.copyItem(at: metalSrc, to: metalDst)
         }
     }
 

@@ -4,13 +4,15 @@
 Package.resolved
 *.xcodeproj/xcuserdata/
 *.xcworkspace/xcuserdata/
+DerivedData/
 
-# --- our build output ---
+# --- App build output ---
 build/
 *.app
 *.dmg
+*.xcarchive
 
-# --- bundled third-party binaries ---
+# --- Bundled third-party binaries ---
 # vc_redist.x86.exe / vc_redist.x64.exe — fetched by Prereqs/fetch.sh from
 # Microsoft. ~40 MB combined; don't commit binary blobs.
 Prereqs/*.exe
@@ -20,6 +22,27 @@ Prereqs/*.msi
 # even if it accidentally lands here.
 SharedSupport/
 
+# --- Node / Next.js (web/) ---
+node_modules/
+.next/
+out/
+*.tsbuildinfo
+next-env.d.ts
+
+# --- Env / secrets ---
+.env
+.env.local
+.env.*.local
+.vercel/
+
+# --- License-signing keys ---
+keys/
+*.pem
+*.key
+*.p12
+*.cer
+*.provisionprofile
+
 # --- macOS / IDE noise ---
 .DS_Store
 *.swp
@@ -27,8 +50,8 @@ SharedSupport/
 .idea/
 .vscode/
 
-# --- logs from local dev runs ---
+# --- Logs ---
 *.log
 
-# session-internal notes
+# --- Session-internal notes ---
 HANDOVER.md

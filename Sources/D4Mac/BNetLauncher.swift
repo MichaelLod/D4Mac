@@ -71,7 +71,11 @@ extension BottleManager {
     /// CEF's renderer sandbox crashes with `int3` in libcef because it relies
     /// on Windows-specific NT APIs Wine doesn't fully implement. Passing
     /// `--no-sandbox`, `--in-process-gpu`, and `--use-gl=swiftshader` is the
-    /// standard fix and matches what CrossOver's BNet shortcut auto-injects.
+    /// minimum set that works: swiftshader (CPU rasterizer) routes around
+    /// CEF's GPU init pickiness. DXMT provides a real D3D11 backend in
+    /// syswow64 which CEF prefers when GLES 3 init fails, but ANGLE-on-DXMT
+    /// alone (no `--use-gl` flag) hangs CEF's body load — DXMT v0.72 lacks
+    /// a feature ANGLE expects. Keep the swiftshader flag.
     func launchBattleNet() async {
         defer { phase = .idle }
         guard case .ready(let bnetPath) = state else {
