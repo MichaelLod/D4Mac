@@ -163,6 +163,8 @@ final class BottleManager: ObservableObject {
         try await deployGPTKBinaries()
         try installCoreFonts()
         try await installPrerequisites()
+
+        ShaderCacheRedirect.setup(supportRoot: supportRoot)
     }
 
     /// `wine wineboot --init` against our prefix. Creates drive_c skeleton,
