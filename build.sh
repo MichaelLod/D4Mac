@@ -215,21 +215,30 @@ fi
 
 if [ "$DMG" = "1" ]; then
   DMG_PATH="$BUILD/D4Mac.dmg"
-  STAGING="$BUILD/dmg-staging"
+  STAGING="$BUILD/dmg-source"
+  BG="$SCRIPT_DIR/Resources/dmg-background.png"
   echo "==> assemble DMG at $DMG_PATH"
 
   rm -rf "$STAGING" "$DMG_PATH"
   mkdir -p "$STAGING"
-  # APFS clone (instant, zero extra disk) — the .app inside the staging dir
-  # is what gets baked into the read-only DMG image.
+  # APFS clone (instant, zero extra disk). create-dmg adds the Applications
+  # symlink itself via --app-drop-link, so the staging dir holds only the .app.
   cp -cR "$APP" "$STAGING/D4Mac.app"
-  ln -s /Applications "$STAGING/Applications"
 
-  hdiutil create \
-    -volname "D4Mac" \
-    -srcfolder "$STAGING" \
-    -ov -format UDZO \
-    "$DMG_PATH"
+  # dmgbuild generates the .DS_Store programmatically — no AppleScript/Finder
+  # dependency, which means it works headlessly. Lives in ~/.local/bin via
+  # pipx. (create-dmg works too but its AppleScript step times out under
+  # non-interactive bash sessions.)
+  DMGBUILD="${DMGBUILD:-$HOME/.local/bin/dmgbuild}"
+  if [ ! -x "$DMGBUILD" ]; then
+    echo "error: dmgbuild not found ($DMGBUILD). Install via: pipx install dmgbuild" >&2
+    exit 1
+  fi
+  "$DMGBUILD" \
+    -s "$SCRIPT_DIR/Resources/dmg-settings.py" \
+    -D "app=$STAGING/D4Mac.app" \
+    -D "background=$BG" \
+    "D4Mac" "$DMG_PATH"
 
   rm -rf "$STAGING"
 
