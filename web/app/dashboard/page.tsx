@@ -1,5 +1,6 @@
 import Stripe from "stripe";
 import { notFound } from "next/navigation";
+import { getDownloadCount } from "@/lib/downloads";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
 
@@ -26,10 +27,13 @@ function fmtDate(unix: number): string {
 type SkuRow = { sku: string; count: number; revenue: number };
 
 async function fetchData() {
-  const sessions = await stripe.checkout.sessions.list({
-    limit: REFETCH_LIMIT,
-    expand: ["data.line_items.data.price"],
-  });
+  const [sessions, downloadCount] = await Promise.all([
+    stripe.checkout.sessions.list({
+      limit: REFETCH_LIMIT,
+      expand: ["data.line_items.data.price"],
+    }),
+    getDownloadCount(),
+  ]);
   const paid = sessions.data.filter((s) => s.payment_status === "paid");
 
   const totalRevenue = paid.reduce((sum, s) => sum + (s.amount_total ?? 0), 0);
@@ -39,6 +43,10 @@ async function fetchData() {
       typeof s.customer === "string" ? s.customer : s.customer?.id,
     ).filter(Boolean),
   ).size;
+  const conversionPct =
+    downloadCount && downloadCount > 0
+      ? ((totalSales / downloadCount) * 100).toFixed(1) + "%"
+      : null;
 
   const skuMap: Record<string, SkuRow> = {};
   for (const s of paid) {
@@ -57,6 +65,8 @@ async function fetchData() {
     totalRevenue,
     totalSales,
     uniqueCustomers,
+    downloadCount,
+    conversionPct,
     skuRows,
     recent: paid
       .slice()
@@ -127,6 +137,20 @@ export default async function DashboardPage({
       >
         <Stat label="Revenue" value={fmtMoney(data.totalRevenue)} accent />
         <Stat label="Sales" value={data.totalSales.toString()} />
+        <Stat
+          label="Downloads"
+          value={
+            data.downloadCount === null
+              ? "—"
+              : data.downloadCount.toLocaleString()
+          }
+          hint={data.downloadCount === null ? "DATABASE_URL not set" : undefined}
+        />
+        <Stat
+          label="Conversion"
+          value={data.conversionPct ?? "—"}
+          hint={data.conversionPct ? "sales ÷ downloads" : undefined}
+        />
         <Stat label="Unique customers" value={data.uniqueCustomers.toString()} />
         <Stat
           label="Avg order"
@@ -187,10 +211,12 @@ function Stat({
   label,
   value,
   accent = false,
+  hint,
 }: {
   label: string;
   value: string;
   accent?: boolean;
+  hint?: string;
 }) {
   return (
     <div
@@ -222,6 +248,11 @@ function Stat({
       >
         {value}
       </div>
+      {hint && (
+        <div style={{ fontSize: 11, color: "var(--text-dim)", marginTop: 4 }}>
+          {hint}
+        </div>
+      )}
     </div>
   );
 }

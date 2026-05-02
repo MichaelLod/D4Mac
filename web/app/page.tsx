@@ -1,15 +1,16 @@
 import Link from "next/link";
 import { CoffeeButton } from "@/components/CoffeeButton";
 import { ThanksBanner } from "@/components/ThanksBanner";
-import { getReleaseStats } from "@/lib/github";
-import { githubRepoUrl } from "@/lib/config";
+import { getDownloadCount } from "@/lib/downloads";
+
+export const revalidate = 60;
 
 export default async function Page() {
-  const stats = await getReleaseStats();
+  const count = await getDownloadCount();
 
   const downloadMeta =
-    stats.totalDownloads > 0
-      ? `${stats.totalDownloads.toLocaleString()} downloads · macOS 14+ · Apple Silicon`
+    count !== null && count > 0
+      ? `${count.toLocaleString()} downloads · macOS 14+ · Apple Silicon`
       : "macOS 14+ · Apple Silicon · ~400 MB";
 
   return (
@@ -18,15 +19,15 @@ export default async function Page() {
       <main>
         <section className="hero">
           <div className="container">
-            <div className="badge">Free · Open Source · MIT</div>
+            <div className="badge">Free · Diablo IV verified · macOS 14+</div>
             <h1>
               Diablo IV
               <br />
               on your Mac.
             </h1>
             <p className="lede">
-              A free, open-source Battle.net launcher for Apple Silicon. No
-              CrossOver licence. No monthly fee. Drag, drop, play.
+              A free Battle.net launcher for Apple Silicon. No CrossOver
+              licence. No monthly fee. Drag, drop, play.
             </p>
 
             <Link
@@ -47,17 +48,14 @@ export default async function Page() {
                 <polyline points="7 10 12 15 17 10" />
                 <line x1="12" y1="15" x2="12" y2="3" />
               </svg>
-              <span>
-                Download {stats.latestVersion ? `${stats.latestVersion} ` : ""}
-                for Mac
-              </span>
+              <span>Download for Mac</span>
             </Link>
             <p className="fineprint">{downloadMeta}</p>
 
             <p className="hero-secondary">
-              <a href={githubRepoUrl} className="text-link">
-                View source on GitHub →
-              </a>
+              <Link href="/skins" className="text-link">
+                Browse paid skins →
+              </Link>
             </p>
           </div>
         </section>
@@ -116,8 +114,8 @@ export default async function Page() {
       <footer>
         <div className="container">
           <p>
-            D4Mac is MIT licensed. Wine is LGPL 2.1. Apple GPTK is © Apple,
-            used under the public non-commercial redistribution clause.
+            Wine 11.0 is LGPL 2.1. Apple GPTK is © Apple, used under the public
+            non-commercial redistribution clause.
           </p>
           <p>Not affiliated with Blizzard, Apple, or CodeWeavers.</p>
         </div>
