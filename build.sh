@@ -115,6 +115,11 @@ echo "==> copy Wine runtime ($(du -sh "$WINE_RUNTIME" | awk '{print $1}'))"
 # clone-on-write copy; on APFS this is instant + zero extra disk.
 cp -cR "$WINE_RUNTIME" "$APP/Contents/SharedSupport/Wine"
 
+# Strip stale upgrade leftovers — *.bak files (from past MoltenVK swaps)
+# and *.before-* symlinks aren't shippable: notarization rejects them.
+find "$APP/Contents/SharedSupport/Wine" \
+  \( -name "*.bak" -o -name "*.before-*" \) -delete
+
 # Make sure binaries are executable post-copy.
 chmod +x "$APP/Contents/MacOS/D4Mac"
 find "$APP/Contents/SharedSupport/Wine/bin" -type f -exec chmod +x {} +
@@ -141,11 +146,27 @@ if [ "$NOTARIZE" = "1" ]; then
   ENTITLEMENTS="$SCRIPT_DIR/Resources/D4Mac.entitlements"
   find "$APP/Contents" \( -name "*.dylib" -o -name "*.so" -o -name "*.framework" \) \
     -not -path "*/Sparkle.framework*" \
+    -not -path "*/D3DMetal.framework*" \
     -exec codesign --force --options runtime --timestamp \
       --sign "$APPLE_DEV_ID" --entitlements "$ENTITLEMENTS" {} \; 2>/dev/null || true
   find "$APP/Contents/SharedSupport/Wine/bin" -type f -perm -u+x \
     -exec codesign --force --options runtime --timestamp \
       --sign "$APPLE_DEV_ID" --entitlements "$ENTITLEMENTS" {} \; 2>/dev/null || true
+  # Wine ships executable loaders under lib/wine/x86_64-unix/ that have no
+  # extension (e.g. the bare `wine` binary) — Apple's notary rejects them
+  # unsigned. Catch every executable mach-o here regardless of name.
+  find "$APP/Contents/SharedSupport/Wine/lib/wine" -type f -perm -u+x \
+    -exec codesign --force --options runtime --timestamp \
+      --sign "$APPLE_DEV_ID" --entitlements "$ENTITLEMENTS" {} \; 2>/dev/null || true
+  # Apple's D3DMetal.framework needs a deep re-sign with our Developer ID
+  # for redistribution — same pattern as Sparkle. Shallow sign corrupts the
+  # nested signatures.
+  D3DMETAL="$APP/Contents/SharedSupport/Wine/lib/external/D3DMetal.framework"
+  if [ -d "$D3DMETAL" ]; then
+    codesign --force --deep --options runtime --timestamp \
+      --sign "$APPLE_DEV_ID" \
+      "$D3DMETAL"
+  fi
   # Sparkle.framework contains its own helpers (Autoupdate, Updater.app,
   # XPCServices). They must be signed with hardened runtime but no app
   # entitlements; --deep signs the nested binaries in one pass.
