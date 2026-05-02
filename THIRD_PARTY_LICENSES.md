@@ -1,9 +1,7 @@
 # Third-party licences in D4Mac.app
 
-The D4Mac launcher itself is **proprietary** — all rights reserved
-(see `LICENSE`). The `.app` bundle additionally ships the following
-third-party components, each retaining its own licence and listed here
-to satisfy redistribution obligations.
+D4Mac's launcher binary is MIT (see `LICENSE`). The `.app` bundle ships
+the following third-party components, each retaining its own licence.
 
 ## Apple Game Porting Toolkit 3.0
 

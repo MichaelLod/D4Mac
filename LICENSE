@@ -1,39 +1,39 @@
-Copyright (c) 2026 Michael Lodzik. All rights reserved.
+MIT License
 
-The contents of this repository — including but not limited to the
-SwiftUI launcher source, the Next.js storefront, build scripts, and any
-related assets — are proprietary to Michael Lodzik. No licence is
-granted, expressly or by implication, to copy, modify, redistribute, or
-prepare derivative works of these materials.
+Copyright (c) 2026 D4Mac contributors
 
-The compiled D4Mac.app binary is distributed free of charge from
-d4mac.app under the End User Licence Agreement published at
-https://d4mac.app/legal. Free public distribution of the compiled
-binary does not grant any licence to the source code in this
-repository.
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
 
-Bundled third-party components retain their original licences — see
-THIRD_PARTY_LICENSES.md for the full list. Notably:
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
 
-  - Apple Game Porting Toolkit binaries (D3DMetal.framework,
-    libd3dshared.dylib, the GPTK PE forwarders) are © Apple Inc. and
-    redistributable only for free non-commercial use. The compiled
-    D4Mac.app may therefore never be sold or bundled into a commercial
-    product so long as those binaries are present.
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
 
-  - Wine 11.0 is LGPL-2.1; bundling Wine in D4Mac.app obliges the
-    distributor to make the corresponding Wine source available.
+----------------------------------------------------------------------------
 
-  - 3Shain DXMT v0.72 is MIT; v0.81+ is LGPL.
+NOTE: This MIT license covers the D4Mac launcher source code only.
+D4Mac bundles third-party software with its own licenses — see
+THIRD_PARTY_LICENSES.md for details. Most relevantly:
 
-  - Microsoft VC++ Redistributable and Microsoft Core Fonts retain
-    their respective Microsoft EULAs.
+  - Apple Game Porting Toolkit binaries (D3DMetal.framework, libd3dshared.dylib,
+    d3d12.dll, dxgi.dll, etc.) are © Apple Inc. and redistributable only for
+    free non-commercial use under Apple's GPTK license. **D4Mac may not be
+    distributed for commercial gain** as a result, even though the launcher
+    source is MIT.
 
-----------------------------------------------------------------------
+  - Wine 11.0 is LGPL 2.1 — its source must remain available to redistribute
+    the binaries.
 
-Historical note: this repository was briefly published under MIT before
-being made private on 2026-05-01. Files committed during that public
-window remain MIT-licensed for anyone who obtained a copy at that time;
-this notice does not retroactively revoke that grant. All commits made
-after the repository was made private are proprietary as described
-above.
+  - Microsoft VC++ Redistributable and MS Core Fonts retain their respective
+    Microsoft EULAs.
