@@ -1,8 +1,8 @@
-import { SignJWT, importPKCS8, type CryptoKey } from "jose";
+import { SignJWT, importPKCS8, type KeyLike } from "jose";
 
-let cachedKey: CryptoKey | null = null;
+let cachedKey: KeyLike | null = null;
 
-async function getPrivateKey(): Promise<CryptoKey> {
+async function getPrivateKey(): Promise<KeyLike> {
   if (cachedKey) return cachedKey;
   const pem = process.env.LICENSE_PRIVATE_KEY_PEM;
   if (!pem) {
