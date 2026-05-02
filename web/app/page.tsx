@@ -1,5 +1,6 @@
-import Link from "next/link";
 import { CoffeeButton } from "@/components/CoffeeButton";
+import { CoffeeTagline } from "@/components/CoffeeTagline";
+import { DownloadButton } from "@/components/DownloadModal";
 import { ThanksBanner } from "@/components/ThanksBanner";
 import { getDownloadCount } from "@/lib/downloads";
 
@@ -30,11 +31,7 @@ export default async function Page() {
               licence. No monthly fee. Drag, drop, play.
             </p>
 
-            <Link
-              className="btn-primary"
-              href="/api/download"
-              prefetch={false}
-            >
+            <DownloadButton>
               <svg
                 viewBox="0 0 24 24"
                 fill="none"
@@ -49,20 +46,14 @@ export default async function Page() {
                 <line x1="12" y1="15" x2="12" y2="3" />
               </svg>
               <span>Download for Mac</span>
-            </Link>
+            </DownloadButton>
             <p className="fineprint">{downloadMeta}</p>
-
-            <p className="hero-secondary">
-              <Link href="/skins" className="text-link">
-                Browse paid skins →
-              </Link>
-            </p>
           </div>
         </section>
 
-        <section className="coffee">
+        <section className="coffee" id="coffee">
           <div className="container">
-            <h2>Like it? Buy me a coffee.</h2>
+            <CoffeeTagline />
             <p className="coffee-lede">
               D4Mac is free forever. If it saved you the $74 CrossOver licence,
               a coffee helps keep it that way.

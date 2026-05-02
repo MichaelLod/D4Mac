@@ -71,19 +71,47 @@ by `Prereqs/fetch.sh`. Files are unmodified.
 
 ## Microsoft Core Fonts For The Web
 
-**Files in bundle**: none — D4Mac symlinks the macOS-bundled copies of
-these fonts at first launch.
+**Files in bundle (after build)**: `Resources/Fonts/{Arial,Arialbd,
+Arialbi,Ariali,AriBlk,AndaleMo,Comic,Comicbd,cour,courbd,courbi,couri,
+Georgia,Georgiab,Georgiai,Georgiaz,Impact,Times,Timesbd,Timesbi,Timesi,
+trebuc,Trebucbd,trebucbi,trebucit,Verdana,Verdanab,Verdanai,Verdanaz,
+Webdings}.TTF/.ttf`
 
-`/System/Library/Fonts/Supplemental/{Arial, Times New Roman, Courier
-New, Georgia, Verdana, Trebuchet MS, Tahoma, Comic Sans MS, Impact,
-Webdings, Wingdings}.ttf` are licensed by Apple for use on macOS via
-their own agreement with Microsoft. We create symbolic links from these
-into the Wine bottle's `c:\windows\Fonts\` so Windows apps find them by
-expected filename. **No font files are copied or distributed by D4Mac.**
+**Not committed to the repo.** Fetched by `Resources/Fonts/fetch.sh`
+from the SourceForge Wine corefonts mirror (the original Microsoft
+1996 EULA-distributable installers, unmodified). Run `fetch.sh` once
+after cloning, or `build.sh` invokes it automatically when fonts are
+missing.
 
-If a future macOS removes these fonts, D4Mac will silently skip the ones
-not present. Users can run `winetricks corefonts` inside the bottle as a
-fallback (downloads from the original SourceForge mirror).
+**Licence**: Microsoft Core Fonts For The Web EULA (1996, original
+distribution). Microsoft discontinued the package in 2002 but never
+revoked the EULA on copies already distributed; the SourceForge mirror
+preserves them. Redistribution permitted only in the original installer
+form, hence the fetch step rather than committing extracted .TTFs.
+
+## CJK fonts — user-supplied (`msyh.ttc`, `simsun.ttc`)
+
+**Files**: `Resources/Fonts/msyh.ttc` (Microsoft YaHei),
+`Resources/Fonts/simsun.ttc` (SimSun) — **optional, user-supplied**.
+
+These are Microsoft proprietary CJK fonts and are **not redistributable**
+in any form. They are NOT in the repo and NOT fetched by `fetch.sh`.
+If you need Chinese rendering, copy them from `C:\Windows\Fonts\` on a
+licensed Windows install. Otherwise, the bundled Adobe Source Han Sans
+serves as a free CJK fallback for Battle.net.
+
+## Adobe Source Han Sans
+
+**Files in bundle**: `Resources/Fonts/SourceHanSans*.otf`,
+`Resources/Fonts/SourceHanSansK*.otf` (Korean),
+`Resources/Fonts/SourceHanSansTC*.otf` (Traditional Chinese).
+
+**Licence**: SIL Open Font License 1.1 — see
+`Resources/Fonts/LICENSE-source-han-sans.txt`. Free to redistribute.
+
+**Source**: [github.com/adobe-fonts/source-han-sans](https://github.com/adobe-fonts/source-han-sans).
+Used as the CJK fallback when Microsoft YaHei / SimSun are not
+available in the bottle.
 
 ## DXMT v0.72
 

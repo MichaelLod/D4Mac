@@ -63,9 +63,15 @@ const jsonLd = {
   offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
   description: SITE.description,
   url: SITE.url,
+  downloadUrl: `${SITE.url}/api/download`,
+  installUrl: `${SITE.url}/api/download`,
+  screenshot: `${SITE.url}/opengraph-image.png`,
+  image: `${SITE.url}/opengraph-image.png`,
   license: "https://opensource.org/licenses/MIT",
   isAccessibleForFree: true,
   softwareVersion: "0.1.0",
+  inLanguage: "en",
+  publisher: { "@type": "Organization", name: SITE.name, url: SITE.url },
 };
 
 export default function RootLayout({

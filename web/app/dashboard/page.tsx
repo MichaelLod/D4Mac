@@ -24,50 +24,36 @@ function fmtDate(unix: number): string {
   });
 }
 
-type SkuRow = { sku: string; count: number; revenue: number };
-
 async function fetchData() {
   const [sessions, downloadCount] = await Promise.all([
     stripe.checkout.sessions.list({
       limit: REFETCH_LIMIT,
-      expand: ["data.line_items.data.price"],
+      expand: ["data.line_items"],
     }),
     getDownloadCount(),
   ]);
   const paid = sessions.data.filter((s) => s.payment_status === "paid");
 
   const totalRevenue = paid.reduce((sum, s) => sum + (s.amount_total ?? 0), 0);
-  const totalSales = paid.length;
-  const uniqueCustomers = new Set(
-    paid.map((s) =>
-      typeof s.customer === "string" ? s.customer : s.customer?.id,
-    ).filter(Boolean),
-  ).size;
+  const totalCoffees = paid.reduce((sum, s) => {
+    const qty = (s.line_items?.data ?? []).reduce(
+      (q, li) => q + (li.quantity ?? 1),
+      0,
+    );
+    return sum + qty;
+  }, 0);
+  const totalSessions = paid.length;
   const conversionPct =
     downloadCount && downloadCount > 0
-      ? ((totalSales / downloadCount) * 100).toFixed(1) + "%"
+      ? ((totalSessions / downloadCount) * 100).toFixed(1) + "%"
       : null;
-
-  const skuMap: Record<string, SkuRow> = {};
-  for (const s of paid) {
-    for (const li of s.line_items?.data ?? []) {
-      const md = li.price?.metadata as Record<string, string> | undefined;
-      const sku = md?.sku ?? li.price?.product?.toString() ?? "unknown";
-      const row = skuMap[sku] ?? { sku, count: 0, revenue: 0 };
-      row.count += li.quantity ?? 1;
-      row.revenue += li.amount_total ?? 0;
-      skuMap[sku] = row;
-    }
-  }
-  const skuRows = Object.values(skuMap).sort((a, b) => b.revenue - a.revenue);
 
   return {
     totalRevenue,
-    totalSales,
-    uniqueCustomers,
+    totalCoffees,
+    totalSessions,
     downloadCount,
     conversionPct,
-    skuRows,
     recent: paid
       .slice()
       .sort((a, b) => b.created - a.created)
@@ -135,8 +121,8 @@ export default async function DashboardPage({
           marginBottom: 32,
         }}
       >
-        <Stat label="Revenue" value={fmtMoney(data.totalRevenue)} accent />
-        <Stat label="Sales" value={data.totalSales.toString()} />
+        <Stat label="Tips received" value={fmtMoney(data.totalRevenue)} accent />
+        <Stat label="Coffees" value={data.totalCoffees.toString()} />
         <Stat
           label="Downloads"
           value={
@@ -149,38 +135,19 @@ export default async function DashboardPage({
         <Stat
           label="Conversion"
           value={data.conversionPct ?? "—"}
-          hint={data.conversionPct ? "sales ÷ downloads" : undefined}
+          hint={data.conversionPct ? "tippers ÷ downloads" : undefined}
         />
-        <Stat label="Unique customers" value={data.uniqueCustomers.toString()} />
         <Stat
-          label="Avg order"
+          label="Avg tip"
           value={
-            data.totalSales > 0
-              ? fmtMoney(Math.round(data.totalRevenue / data.totalSales))
+            data.totalSessions > 0
+              ? fmtMoney(Math.round(data.totalRevenue / data.totalSessions))
               : "–"
           }
         />
       </section>
 
-      <Card title="By SKU">
-        {data.skuRows.length === 0 ? (
-          <Empty>No paid sessions yet.</Empty>
-        ) : (
-          <Table
-            columns={["SKU", "Sold", "Revenue"]}
-            align={["left", "right", "right"]}
-            rows={data.skuRows.map((r) => [
-              <code key="s" style={{ fontFamily: "ui-monospace, monospace" }}>
-                {r.sku}
-              </code>,
-              r.count,
-              fmtMoney(r.revenue),
-            ])}
-          />
-        )}
-      </Card>
-
-      <Card title="Recent sales">
+      <Card title="Recent tips">
         {data.recent.length === 0 ? (
           <Empty>No paid sessions yet.</Empty>
         ) : (

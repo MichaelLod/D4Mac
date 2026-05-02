@@ -18,6 +18,16 @@ build/
 Prereqs/*.exe
 Prereqs/*.msi
 
+# --- Microsoft fonts (fetched, not redistributable) ---
+# MS Core Fonts For The Web come in via Resources/Fonts/fetch.sh.
+# msyh.ttc / simsun.ttc must be supplied by the user from a Windows
+# install — Microsoft does not redistribute them. Source Han Sans
+# (*.otf, SIL OFL 1.1) is the only font family committed to the repo.
+Resources/Fonts/*.TTF
+Resources/Fonts/*.ttf
+Resources/Fonts/msyh.ttc
+Resources/Fonts/simsun.ttc
+
 # Wine runtime is built/staged outside this repo (see README) — never commit
 # even if it accidentally lands here.
 SharedSupport/

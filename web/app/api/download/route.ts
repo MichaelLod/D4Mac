@@ -1,26 +1,18 @@
 import { NextResponse } from "next/server";
-import { incrementDownloads } from "@/lib/downloads";
-import { getReleaseDownloadUrl } from "@/lib/storage";
 
-/// `GET /api/download`:
-///   1. Generate a fresh 1-hour presigned URL for the .dmg in the
-///      Railway Bucket.
-///   2. INCR the Postgres counter.
-///   3. 302-redirect the browser at the presigned URL.
+const REPO = "MichaelLod/D4Mac";
+const ASSET = "D4Mac.dmg";
+
+/// `GET /api/download` — 302-redirects to the latest release's `D4Mac.dmg`
+/// asset on GitHub. Counts toward GitHub's per-asset `download_count`,
+/// which we read back via `lib/downloads.ts`.
 ///
-/// Returns 503 if the bucket isn't configured (no AWS_* env vars set).
+/// We could link the homepage button straight at GitHub, but routing
+/// through `/api/download` keeps a clean URL we control and lets us add
+/// logging or version pinning later without touching the UI.
 export async function GET() {
-  const target = await getReleaseDownloadUrl();
-  if (!target) {
-    return NextResponse.json(
-      { error: "Release not available. Bucket credentials missing." },
-      { status: 503 },
-    );
-  }
-  const count = await incrementDownloads();
-  console.log("download_click", {
-    count,
-    ts: new Date().toISOString(),
-  });
-  return NextResponse.redirect(target, 302);
+  return NextResponse.redirect(
+    `https://github.com/${REPO}/releases/latest/download/${ASSET}`,
+    302,
+  );
 }

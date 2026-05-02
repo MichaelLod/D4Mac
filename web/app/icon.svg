@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <defs>
+    <!-- Cobalt → midnight gradient (echoes Battle.net's blue but darker, more Mac-native) -->
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%"   stop-color="#1d3a8c"/>
+      <stop offset="60%"  stop-color="#0d1e4f"/>
+      <stop offset="100%" stop-color="#050b1f"/>
+    </linearGradient>
+    <!-- Lit text gradient: light blue top → deeper blue bottom, suggests glow -->
+    <linearGradient id="ink" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%"   stop-color="#bcd9ff"/>
+      <stop offset="55%"  stop-color="#5e9bf0"/>
+      <stop offset="100%" stop-color="#2858b8"/>
+    </linearGradient>
+    <!-- Soft halo behind the wordmark -->
+    <radialGradient id="halo" cx="50%" cy="55%" r="55%">
+      <stop offset="0%"   stop-color="#5e9bf0" stop-opacity="0.45"/>
+      <stop offset="55%"  stop-color="#1d3a8c" stop-opacity="0.10"/>
+      <stop offset="100%" stop-color="#1d3a8c" stop-opacity="0"/>
+    </radialGradient>
+    <!-- Inner edge highlight to give the icon depth on macOS -->
+    <linearGradient id="rim" x1="50%" y1="0%" x2="50%" y2="100%">
+      <stop offset="0%"   stop-color="#ffffff" stop-opacity="0.12"/>
+      <stop offset="50%"  stop-color="#ffffff" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#000000" stop-opacity="0.25"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Rounded squircle background (Apple-style, ~22% corner radius) -->
+  <rect x="0" y="0" width="1024" height="1024" rx="225" fill="url(#bg)"/>
+
+  <!-- Halo glow centered on the wordmark -->
+  <ellipse cx="512" cy="560" rx="380" ry="280" fill="url(#halo)"/>
+
+  <!-- D4 wordmark — heavy rounded sans, slightly italic feel via skew -->
+  <g transform="translate(512 640)">
+    <text text-anchor="middle"
+          font-family="-apple-system, SF Pro Display, system-ui, sans-serif"
+          font-weight="800"
+          font-size="500"
+          letter-spacing="-25"
+          fill="url(#ink)">D4</text>
+  </g>
+
+  <!-- Subtle Mac-flavor accent: a small Apple-style "spark" in the upper right -->
+  <g opacity="0.55">
+    <circle cx="780" cy="240" r="6"  fill="#bcd9ff"/>
+    <circle cx="820" cy="270" r="3"  fill="#bcd9ff"/>
+    <circle cx="755" cy="285" r="2"  fill="#bcd9ff"/>
+  </g>
+
+  <!-- Edge rim for depth -->
+  <rect x="0" y="0" width="1024" height="1024" rx="225" fill="url(#rim)" pointer-events="none"/>
+</svg>
