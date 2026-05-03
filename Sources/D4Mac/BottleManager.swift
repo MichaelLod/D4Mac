@@ -336,11 +336,21 @@ final class BottleManager: ObservableObject {
             phase = .runningInstaller
             log.info("running installer: \(installerURL.path)")
 
+            // Battle.net-Setup.exe also uses CEF for its UI — same env-var
+            // requirements as launching BNet itself. See BNetLauncher.swift
+            // for the WRITECOPY hack rationale.
             let proc = WineProcess(
                 wine: wineBin,
                 prefix: bottleRoot,
                 externalLibDir: libExternal,
-                args: [installerURL.path]
+                args: [installerURL.path],
+                extraEnv: [
+                    "WINE_SIMULATE_WRITECOPY": "1",
+                    "WINE_LARGE_ADDRESS_AWARE": "1",
+                    "WINE_HEAP_ZERO_MEMORY": "1",
+                    "ROSETTA_ADVERTISE_AVX": "1",
+                    "DOTNET_EnableWriteXorExecute": "0"
+                ]
             )
             let status = try await proc.run()
             if status != 0 {
