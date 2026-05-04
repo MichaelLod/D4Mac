@@ -26,6 +26,7 @@ final class BottleManager: ObservableObject {
         case launchingBattleNet         // Battle.net.exe running
         case movingBottle               // relocating the support dir to another volume
         case importingGame              // cloning an existing game install into the bottle
+        case relaunchingAfterFreeze     // watchdog killed; D4Mac relaunching
 
         var label: String {
             switch self {
@@ -37,6 +38,7 @@ final class BottleManager: ObservableObject {
             case .launchingBattleNet: "Battle.net is live"
             case .movingBottle:       "Relocating your bottle…"
             case .importingGame:      "Bringing your game files over…"
+            case .relaunchingAfterFreeze: "Recovering from freeze…"
             }
         }
 
@@ -58,6 +60,8 @@ final class BottleManager: ObservableObject {
                 "Copying everything to the new location. With games installed this can take a while — don't unplug the drive."
             case .importingGame:
                 "Cloning the existing install into your bottle. Instant on the same drive; a bit longer if it has to copy across drives."
+            case .relaunchingAfterFreeze:
+                "A freeze was detected and the game process was automatically recovered. Cloud saves are safe — restarting now."
             }
         }
     }

@@ -5,6 +5,9 @@ struct SettingsView: View {
     @AppStorage("metalHUD") private var metalHUD = false
     @AppStorage("vendorSpoof") private var vendorSpoof = true
     @AppStorage("syncStyle") private var syncStyle: SyncStyle = .none
+    /// When enabled, the d4-watchdog thread inside Wine will SIGKILL the
+    /// process after a confirmed 10 s freeze and D4Mac will auto-relaunch it.
+    @AppStorage("watchdogAutokill") private var watchdogAutokill = false
     @State private var showMovePicker = false
     @State private var showImport = false
 
@@ -59,6 +62,12 @@ struct SettingsView: View {
             Section {
                 Toggle("Show Metal performance HUD", isOn: $metalHUD)
                 Toggle("Spoof GPU as Apple (recommended for D4)", isOn: $vendorSpoof)
+                Toggle("Auto-recover from freezes (experimental)", isOn: $watchdogAutokill)
+                if watchdogAutokill {
+                    Text("When a freeze lasts 10 s, the game process is killed and restarted automatically. Cloud saves are unaffected. Disable if you see false positives during heavy loading screens.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
             } header: {
                 Text("Performance")
             } footer: {

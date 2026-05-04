@@ -94,6 +94,41 @@ struct WineProcess {
             }
         }
     }
+
+    /// Same as `run()` but also reports whether Wine was killed by a signal
+    /// (e.g. SIGKILL from the d4-watchdog autokill feature).
+    func runDetailed() async throws -> WineExitResult {
+        try await withCheckedThrowingContinuation { (cont: CheckedContinuation<WineExitResult, Error>) in
+            let p = Process()
+            p.executableURL = wine
+            p.arguments = args
+            p.environment = environment
+
+            do {
+                try p.run()
+            } catch {
+                cont.resume(throwing: error)
+                return
+            }
+
+            Self.log.info("wine pid=\(p.processIdentifier) args=\(self.args.joined(separator: " "))")
+
+            p.terminationHandler = { proc in
+                let killed = proc.terminationReason == .uncaughtSignal
+                                  && proc.terminationStatus == SIGKILL
+                Self.log.info("wine exited status=\(proc.terminationStatus) killedBySignal=\(killed)")
+                cont.resume(returning: WineExitResult(status: proc.terminationStatus,
+                                                      killedBySignal: killed))
+            }
+        }
+    }
+}
+
+struct WineExitResult {
+    let status: Int32
+    /// True when the process was terminated by SIGKILL (status==9, reason==.uncaughtSignal).
+    /// This is what d4_watchdog_autokill delivers.
+    let killedBySignal: Bool
 }
 
 /// Convenience for launching BNet's main executable.
@@ -137,30 +172,64 @@ extension BottleManager {
             // launches once BNet has logged in once.
             seedBNetConfig()
 
-            let proc = WineProcess(
-                wine: wineBin,
-                prefix: bottleRoot,
-                externalLibDir: libExternal,
-                args: [
-                    bnetPath,
-                    "--in-process-gpu",
-                    "--use-gl=swiftshader"
-                ],
-                extraEnv: [
-                    "WINE_SIMULATE_WRITECOPY": "1",
-                    "WINE_LARGE_ADDRESS_AWARE": "1",
-                    "WINE_HEAP_ZERO_MEMORY": "1",
-                    "ROSETTA_ADVERTISE_AVX": "1",
-                    "DOTNET_EnableWriteXorExecute": "0"
-                ]
-            )
-            let status = try await proc.run()
-            if status != 0 {
-                lastError = D4MacError(
-                    "Battle.net exited unexpectedly (code \(status)).",
-                    "Common cause: Battle.net's UI (Chromium) sometimes crashes on first launch under Wine. Try clicking Launch again — it usually works the second time. If it keeps failing, reset the bottle in Settings → Advanced and retry."
-                ).fullMessage
+            // Read autokill preference. UserDefaults is safe to query from any
+            // context; @AppStorage in SettingsView writes under the same key.
+            let autokillEnabled = UserDefaults.standard.bool(forKey: "watchdogAutokill")
+
+            var baseEnv: [String: String] = [
+                "WINE_SIMULATE_WRITECOPY": "1",
+                "WINE_LARGE_ADDRESS_AWARE": "1",
+                "WINE_HEAP_ZERO_MEMORY": "1",
+                "ROSETTA_ADVERTISE_AVX": "1",
+                "DOTNET_EnableWriteXorExecute": "0"
+            ]
+            if autokillEnabled {
+                baseEnv["D4_WATCHDOG_AUTOKILL"] = "1"
             }
+
+            // Auto-relaunch loop: when the watchdog kills the process via
+            // SIGKILL we briefly show a "Recovering from freeze…" status and
+            // restart BNet automatically. Any other exit (user closes BNet,
+            // normal crash) breaks the loop.
+            relaunch: while true {
+                let proc = WineProcess(
+                    wine: wineBin,
+                    prefix: bottleRoot,
+                    externalLibDir: libExternal,
+                    args: [
+                        bnetPath,
+                        "--in-process-gpu",
+                        "--use-gl=swiftshader"
+                    ],
+                    extraEnv: baseEnv
+                )
+                let result = try await proc.runDetailed()
+
+                if result.killedBySignal && autokillEnabled {
+                    // Watchdog autokill fired — clean up the Wine server state
+                    // (the whole process tree was killed; wineserver must restart
+                    // cleanly before we spawn again) then relaunch.
+                    Logger(subsystem: "com.d4mac.app", category: "bottle")
+                        .info("d4-watchdog SIGKILL detected — relaunching BNet")
+                    phase = .relaunchingAfterFreeze
+                    await killWineProcesses()
+                    // Brief pause so the user sees the status banner before BNet
+                    // window reappears; also gives wineserver time to fully exit.
+                    try await Task.sleep(for: .seconds(2))
+                    phase = .launchingBattleNet
+                    continue relaunch
+                }
+
+                // Normal exit or non-watchdog signal.
+                if result.status != 0 {
+                    lastError = D4MacError(
+                        "Battle.net exited unexpectedly (code \(result.status)).",
+                        "Common cause: Battle.net's UI (Chromium) sometimes crashes on first launch under Wine. Try clicking Launch again — it usually works the second time. If it keeps failing, reset the bottle in Settings → Advanced and retry."
+                    ).fullMessage
+                }
+                break relaunch
+            }
+
             await refresh()
         } catch let err as D4MacError {
             lastError = err.fullMessage

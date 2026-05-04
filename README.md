@@ -21,17 +21,55 @@ for the full breakdown.
 
 ## Status
 
-| Game / app                  | Status                                                                                      |
-| --------------------------- | ------------------------------------------------------------------------------------------- |
-| Battle.net                  | ✓ launches, login + chat work, keyboard works                                               |
-| Diablo IV                   | ✓ playable end-to-end (verified 2026-05)                                                    |
-| First-launch shader compile | ⚠ ~50 % of the time it hangs once on the Metal pipeline race; second launch always works    |
-| Other Blizzard titles       | not tested — try and [open an issue](https://github.com/MichaelLod/D4Mac/issues/new/choose) |
+| Game / app | Status |
+|---|---|
+| Battle.net | ✓ launches, login + chat work, keyboard works |
+| Diablo IV | ✓ playable; ⚠ see [Known issues](#known-issues) for in-game hangs |
+| Other Blizzard titles | not tested — try and [open an issue](https://github.com/MichaelLod/D4Mac/issues/new/choose) |
+
+## Known issues
+
+### Mid-game freeze on macOS ≤ 26.3 (Rosetta 2 deadlock)
+
+After anywhere from a few minutes to several hours of play, the game can
+freeze unrecoverably and macOS shows a persistent beachball. This is a
+**Rosetta 2 deadlock**, not a Wine or D3DMetal bug — the wedged thread
+parks on `os_sync_wait_on_address` inside Apple's `libd3dshared.dylib`,
+triggered when Blizzard's anti-cheat reads translated x86_64 code pages.
+CodeWeavers [publicly confirmed](https://www.codeweavers.com/compatibility/crossover/forum/diablo-iv?msg=348207)
+this is an Apple-side bug — nothing the launcher can patch from the Wine
+side.
+
+**Fix: upgrade to macOS 26.4 Tahoe (released 2026-03-24) or later.**
+Apple silently patched the underlying Rosetta 2 issue in 26.4. Users
+[report 1+ hour clean play sessions](https://www.codeweavers.com/compatibility/crossover/forum/diablo-iv?msg=349051)
+on 26.4 where 26.3 and earlier still freeze.
+
+If you can't upgrade yet, these mitigations reduce — but do not cure —
+the freeze frequency:
+
+- Run the game in **Windowed** or **Borderless Windowed** mode (not Fullscreen)
+- D4 Graphics → disable **FSR**; set **Background FPS** to 30
+- Bottle env (Settings → Advanced): `WINEESYNC=1`, `ROSETTA_ADVERTISE_AVX=1`
+
+### First-launch shader compile hang
+
+About half the time, the very first launch hangs during the initial
+Metal pipeline shader compile — a race in Apple's D3DMetal pipeline
+state object creation. Force-quit (`⌘⌥⎋`) and relaunch; the second
+launch always works because the shader cache is now warm.
+
+### Spaces / Mission Control freeze
+
+Switching macOS Spaces or invoking Mission Control while D4 is running
+in fullscreen can wedge the game's main window thread (an AppKit
+busy-spin variant). Running in **Borderless Windowed** mode avoids this
+entirely.
 
 ## Requirements
 
 - Apple Silicon Mac (M1, M2, M3, M4 — any)
-- macOS 14 (Sonoma) or later
+- macOS 14 (Sonoma) or later — **macOS 26.4 Tahoe strongly recommended** for D4 stability (see [Known issues](#known-issues))
 - ~400 MB free for the `.app` bundle, plus space for the Battle.net + game install (Diablo IV is ~80 GB)
 - Apple ID (only if Gatekeeper prompts you to verify the bundle on first launch)
 
