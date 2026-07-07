@@ -193,6 +193,15 @@ struct ContentView: View {
                     .font(.caption)
                     .foregroundStyle(Color.appSubhead)
                     .fixedSize(horizontal: false, vertical: true)
+                if let p = bottle.installProgress, bottle.phase == .runningInstaller {
+                    ProgressView(value: p.fraction)
+                        .tint(.bnetBlueLight)
+                        .padding(.top, 4)
+                    Text(progressLine(p))
+                        .font(.caption2)
+                        .monospacedDigit()
+                        .foregroundStyle(Color.appCaption)
+                }
             }
             Spacer(minLength: 0)
         }
@@ -224,6 +233,21 @@ struct ContentView: View {
         let v = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0"
         let b = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "1"
         return "v\(v) (\(b))"
+    }
+
+    /// "67% · 1.2 GB / 1.8 GB · 8.3 MB/s" — bytes/speed dropped when unknown.
+    private func progressLine(_ p: BottleManager.InstallProgress) -> String {
+        let bcf = ByteCountFormatter()
+        bcf.allowedUnits = [.useGB, .useMB]
+        bcf.countStyle = .file
+        var parts = ["\(Int((p.fraction * 100).rounded()))%"]
+        if p.bytesTotal > 0 {
+            parts.append("\(bcf.string(fromByteCount: p.bytesDone)) / \(bcf.string(fromByteCount: p.bytesTotal))")
+        }
+        if p.bytesPerSec > 0 {
+            parts.append("\(bcf.string(fromByteCount: Int64(p.bytesPerSec)))/s")
+        }
+        return parts.joined(separator: " · ")
     }
 
     private func handleInstallerPick(_ result: Result<[URL], Error>) {

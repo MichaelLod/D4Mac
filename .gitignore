@@ -18,6 +18,11 @@ build/
 Prereqs/*.exe
 Prereqs/*.msi
 
+# x86_64 FreeType/GnuTLS dependency chain — fetched + rewritten by
+# Prereqs/fetch-wine-libs.py from Homebrew's GHCR bottles, bundled into the
+# Wine runtime's lib/external. ~8 MB of dylibs; fetched on demand, not committed.
+Prereqs/wine-libs/
+
 # --- Microsoft fonts (fetched, not redistributable) ---
 # MS Core Fonts For The Web come in via Resources/Fonts/fetch.sh.
 # msyh.ttc / simsun.ttc must be supplied by the user from a Windows

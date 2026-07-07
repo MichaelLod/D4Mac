@@ -6,6 +6,7 @@ the following third-party components, each retaining its own licence.
 ## Apple Game Porting Toolkit 3.0
 
 **Files in bundle**:
+
 - `Contents/SharedSupport/Wine/lib/external/D3DMetal.framework/`
 - `Contents/SharedSupport/Wine/lib/external/libd3dshared.dylib`
 - `Contents/SharedSupport/Wine/lib/wine/x86_64-windows/d3d12.dll`
@@ -16,7 +17,7 @@ the following third-party components, each retaining its own licence.
 - `Contents/SharedSupport/Wine/lib/wine/x86_64-windows/nvngx.dll`
 
 **Licence**: Apple GPTK Licence, redistributable per clause (i)(iii)
-*"distribute the Apple Software solely for non-commercial purposes."*
+_"distribute the Apple Software solely for non-commercial purposes."_
 The unmodified `License.pdf` is included in `Contents/Resources/` per
 that clause's requirements.
 
@@ -31,6 +32,7 @@ permits.
 
 **Files in bundle**: everything else under `Contents/SharedSupport/Wine/`,
 notably:
+
 - `bin/{wine, wineserver, wineloader, …}`
 - `lib/wine/x86_64-windows/wined3d.dll` and other Wine PE modules
 - `lib/wine/x86_64-unix/{ntdll, kernel32, …}.so`
@@ -58,6 +60,7 @@ it but bundling allows games that prefer Vulkan/MoltenVK to run.
 ## Microsoft Visual C++ 2015-2022 Redistributable
 
 **Files in bundle**:
+
 - `Contents/Resources/Prereqs/vc_redist.x86.exe`
 - `Contents/Resources/Prereqs/vc_redist.x64.exe`
 
@@ -116,6 +119,7 @@ available in the bottle.
 ## DXMT v0.72
 
 **Files in bundle**:
+
 - `Contents/SharedSupport/Wine/lib/external/dxmt/i386-windows/{d3d11,d3d10core,dxgi,winemetal}.dll`
 - `Contents/SharedSupport/Wine/lib/external/dxmt/x86_64-windows/{d3d11,d3d10core,dxgi,winemetal,nvapi64,nvngx}.dll`
 - `Contents/SharedSupport/Wine/lib/external/dxmt/x86_64-unix/winemetal.so`
@@ -135,3 +139,45 @@ ship v0.72 to keep the MIT terms.
 
 **Source**: [github.com/3Shain/dxmt](https://github.com/3Shain/dxmt) at
 the v0.72 tag.
+
+## FreeType / GnuTLS x86_64 dependency chain
+
+**Files in bundle**: `Contents/SharedSupport/Wine/lib/external/`
+
+- `libfreetype.6.dylib`, `libpng16.16.dylib`
+- `libgnutls.30.dylib`, `libnettle.9.dylib`, `libhogweed.7.dylib`,
+  `libgmp.10.dylib`, `libtasn1.6.dylib`, `libp11-kit.0.dylib`,
+  `libidn2.0.dylib`, `libunistring.5.dylib`, `libintl.8.dylib`
+
+**Why bundled**: the x86_64 Wine runtime `dlopen()`s these libraries by
+leaf name at runtime (FreeType for text rendering, GnuTLS for TLS) and
+resolves them out of `lib/external` via `DYLD_FALLBACK_LIBRARY_PATH`.
+Without an x86_64 build present, Apple Silicon users with only ARM
+Homebrew — or no Homebrew — saw blank text in Battle.net Setup and TLS
+failures. Bundling the whole closure removes the Intel-Homebrew dependency.
+
+**Modifications**: unmodified library code. Only Mach-O install names and
+inter-library dependency paths were rewritten to `@rpath/<leaf>` (via
+`install_name_tool`) so dyld resolves the chain from `lib/external`. No
+compiled code is altered.
+
+**Licences** (all free / redistributable; libraries are dynamically loaded,
+so the LGPL relinking provision is satisfiable):
+
+| Library                            | Upstream                                                                    | Licence                               |
+| ---------------------------------- | --------------------------------------------------------------------------- | ------------------------------------- |
+| FreeType (`libfreetype`)           | [freetype.org](https://freetype.org)                                        | FTL or GPL-2.0-or-later               |
+| libpng (`libpng16`)                | [libpng.org](http://www.libpng.org/pub/png/libpng.html)                     | PNG Reference Library License v2      |
+| GnuTLS (`libgnutls`)               | [gnutls.org](https://www.gnutls.org)                                        | LGPL-2.1-or-later                     |
+| Nettle (`libnettle`, `libhogweed`) | [lysator.liu.se/~nisse/nettle](https://www.lysator.liu.se/~nisse/nettle/)   | LGPL-3.0-or-later or GPL-2.0-or-later |
+| GMP (`libgmp`)                     | [gmplib.org](https://gmplib.org)                                            | LGPL-3.0-or-later or GPL-2.0-or-later |
+| libtasn1 (`libtasn1`)              | [gnu.org/software/libtasn1](https://www.gnu.org/software/libtasn1/)         | LGPL-2.1-or-later                     |
+| p11-kit (`libp11-kit`)             | [p11-glue.github.io](https://p11-glue.github.io/p11-glue/p11-kit.html)      | BSD-3-Clause                          |
+| libidn2 (`libidn2`)                | [gnu.org/software/libidn](https://www.gnu.org/software/libidn/)             | LGPL-3.0-or-later or GPL-2.0-or-later |
+| libunistring (`libunistring`)      | [gnu.org/software/libunistring](https://www.gnu.org/software/libunistring/) | LGPL-3.0-or-later or GPL-2.0-or-later |
+| gettext runtime (`libintl`)        | [gnu.org/software/gettext](https://www.gnu.org/software/gettext/)           | LGPL-2.1-or-later                     |
+
+**Source**: prebuilt x86_64 macOS bottles from Homebrew's GHCR registry
+(`ghcr.io/homebrew/core/*`), staged by `Prereqs/fetch-wine-libs.py`. The
+complete corresponding source for each library is available from its
+upstream above and from [github.com/Homebrew/homebrew-core](https://github.com/Homebrew/homebrew-core).

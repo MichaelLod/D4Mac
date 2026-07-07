@@ -22,8 +22,20 @@ struct WineProcess {
         env["WINEPREFIX"] = prefix.path
         env["WINEDLLOVERRIDES"] = "winemenubuilder.exe=d;mscoree=d;mshtml=d"
         env["WINEDEBUG"] = "-all,err+seh"
-        env["WINEMSYNC"] = "1"
-        env["WINEESYNC"] = "1"
+
+        // Wine sync primitive, driven by the Settings "Synchronisation" toggle
+        // (UserDefaults key "syncStyle"; see SettingsView.SyncStyle). Defaults
+        // to "none" — and that default matters: esync/msync spin on userspace
+        // sync objects, and on macOS 26 / Apple Silicon under Rosetta that spin
+        // pegs a CPU core and starves Battle.net's downloader (~4 KB/s instead
+        // of multiple MB/s), besides risking gameplay freezes. With sync off the
+        // wineserver arbitrates sync calls — far slower in theory, far more
+        // reliable here. Users who want the throughput can opt back into esync.
+        switch UserDefaults.standard.string(forKey: "syncStyle") ?? "none" {
+        case "msync": env["WINEMSYNC"] = "1"; env["WINEESYNC"] = "1"
+        case "esync": env["WINEMSYNC"] = "0"; env["WINEESYNC"] = "1"
+        default:      env["WINEMSYNC"] = "0"; env["WINEESYNC"] = "0"  // "none"
+        }
 
         // CrossOver-compatible runtime knobs (CW Wine source patches read these).
         env["CX_ACTIVE_GRAPHICS_BACKEND"] = "d3dmetal"

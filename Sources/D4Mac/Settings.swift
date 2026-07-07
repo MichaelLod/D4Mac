@@ -4,16 +4,20 @@ struct SettingsView: View {
     @EnvironmentObject var bottle: BottleManager
     @AppStorage("metalHUD") private var metalHUD = false
     @AppStorage("vendorSpoof") private var vendorSpoof = true
-    @AppStorage("syncStyle") private var syncStyle: SyncStyle = .msync
+    @AppStorage("syncStyle") private var syncStyle: SyncStyle = .none
 
+    // Order = display order in the segmented picker. `none` is first and the
+    // default: on macOS 26 / Apple Silicon, esync/msync spin-wait pegs a CPU
+    // core and throttles Battle.net's downloader to a few KB/s (and can freeze
+    // gameplay). Read by WineProcess.environment in BNetLauncher.swift.
     enum SyncStyle: String, CaseIterable, Identifiable {
-        case msync, esync, none
+        case none, esync, msync
         var id: String { rawValue }
         var label: String {
             switch self {
-            case .msync: "MSync (recommended)"
+            case .none:  "None (recommended)"
             case .esync: "ESync"
-            case .none:  "None"
+            case .msync: "MSync"
             }
         }
     }
@@ -41,6 +45,9 @@ struct SettingsView: View {
                     ForEach(SyncStyle.allCases) { s in Text(s.label).tag(s) }
                 }
                 .pickerStyle(.segmented)
+                Text("Keep this on None on macOS 26 / Apple Silicon. ESync/MSync spin-wait on the CPU, which throttles Battle.net downloads to a crawl and can freeze the game. Takes effect the next time you launch Battle.net.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
         }
         .formStyle(.grouped)

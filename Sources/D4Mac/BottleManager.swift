@@ -58,6 +58,19 @@ final class BottleManager: ObservableObject {
     @Published var phase: Phase = .idle
     @Published var lastError: String?
 
+    /// Live progress for the Battle.net install, parsed from the Blizzard
+    /// Agent log while `phase == .runningInstaller`. nil when no figure is
+    /// available yet (early prefix/prereq phases, or before the Agent starts
+    /// reporting). Drives the determinate bar in the status banner.
+    @Published var installProgress: InstallProgress?
+
+    struct InstallProgress: Equatable {
+        var fraction: Double      // 0…1, the Agent's "playable_progress"
+        var bytesDone: Int64
+        var bytesTotal: Int64
+        var bytesPerSec: Double   // smoothed over the last poll interval
+    }
+
     /// Backwards-compat for the simple `disabled` checks.
     var isBusy: Bool { phase != .idle }
 
@@ -328,12 +341,15 @@ final class BottleManager: ObservableObject {
     /// Run an arbitrary BNet installer .exe inside the bottle. Used for
     /// initial setup. Returns when wine subprocess exits.
     func runInstaller(_ installerURL: URL) async {
-        defer { phase = .idle }
+        var progressTask: Task<Void, Never>?
+        defer { phase = .idle; installProgress = nil; progressTask?.cancel() }
         do {
             try await ensureBottle()
             try checkInstallerFile(installerURL)
 
             phase = .runningInstaller
+            installProgress = nil
+            progressTask = Task { [weak self] in await self?.pollInstallProgress() }
             log.info("running installer: \(installerURL.path)")
 
             // Battle.net-Setup.exe also uses CEF for its UI — same env-var
@@ -378,6 +394,88 @@ final class BottleManager: ObservableObject {
         } catch {
             lastError = error.localizedDescription
         }
+    }
+
+    // MARK: - Install progress (Blizzard Agent log)
+
+    /// Poll the Agent log ~every 1.5 s and publish a live progress figure.
+    /// Runs concurrently with the installer subprocess; cancelled when it exits.
+    private func pollInstallProgress() async {
+        var lastBytes: Int64 = 0
+        var lastTime = Date()
+        var primed = false
+        while !Task.isCancelled {
+            if let s = currentAgentStats() {
+                let now = Date()
+                let dt = now.timeIntervalSince(lastTime)
+                var speed = 0.0
+                // Skip the first sample (no baseline) and any counter reset
+                // (the byte counter restarts between agent-update and client
+                // phases — a negative delta isn't a real rate).
+                if primed, dt > 0, s.done >= lastBytes {
+                    speed = Double(s.done - lastBytes) / dt
+                }
+                installProgress = InstallProgress(
+                    fraction: s.fraction, bytesDone: s.done,
+                    bytesTotal: s.total, bytesPerSec: speed)
+                lastBytes = s.done
+                lastTime = now
+                primed = true
+            }
+            try? await Task.sleep(nanoseconds: 1_500_000_000)
+        }
+    }
+
+    /// Parse the newest Agent log's most recent progress blob.
+    private func currentAgentStats() -> (done: Int64, total: Int64, fraction: Double)? {
+        guard let logURL = newestAgentLog(), let tail = tailString(logURL) else { return nil }
+        let doneStr = lastCapture(#""update_bytes_current":\s*\[\s*([0-9]+)"#, tail)
+        let totalStr = lastCapture(#""update_bytes_total":\s*\[\s*([0-9]+)"#, tail)
+        let fracStr = lastCapture(#""playable_progress":\s*([0-9.]+)"#, tail)
+        if doneStr == nil && totalStr == nil && fracStr == nil { return nil }
+        let done = Int64(doneStr ?? "") ?? 0
+        let total = Int64(totalStr ?? "") ?? 0
+        let frac = Double(fracStr ?? "") ?? (total > 0 ? Double(done) / Double(total) : 0)
+        return (done, total, min(max(frac, 0), 1))
+    }
+
+    /// Newest `Agent-*.log` under the bottle's Battle.net Agent dir, by mtime.
+    private func newestAgentLog() -> URL? {
+        let agentDir = bottleRoot.appendingPathComponent(
+            "drive_c/ProgramData/Battle.net/Agent", isDirectory: true)
+        let fm = FileManager.default
+        guard let en = fm.enumerator(
+            at: agentDir, includingPropertiesForKeys: [.contentModificationDateKey]) else { return nil }
+        var best: (url: URL, date: Date)?
+        for case let u as URL in en {
+            let name = u.lastPathComponent
+            guard name.hasPrefix("Agent-"), name.hasSuffix(".log") else { continue }
+            let m = (try? u.resourceValues(forKeys: [.contentModificationDateKey]))?
+                .contentModificationDate ?? .distantPast
+            if best == nil || m > best!.date { best = (u, m) }
+        }
+        return best?.url
+    }
+
+    /// Last `maxBytes` of a file as UTF-8 (the log only grows; the tail holds
+    /// the freshest progress blob).
+    private func tailString(_ url: URL, maxBytes: UInt64 = 65536) -> String? {
+        guard let fh = try? FileHandle(forReadingFrom: url) else { return nil }
+        defer { try? fh.close() }
+        let size = (try? fh.seekToEnd()) ?? 0
+        try? fh.seek(toOffset: size > maxBytes ? size - maxBytes : 0)
+        let data = (try? fh.readToEnd()) ?? Data()
+        return String(data: data, encoding: .utf8)
+    }
+
+    /// First capture group of the LAST regex match (the most recent value).
+    private func lastCapture(_ pattern: String, _ s: String) -> String? {
+        guard let re = try? NSRegularExpression(
+            pattern: pattern, options: [.dotMatchesLineSeparators]) else { return nil }
+        let matches = re.matches(in: s, range: NSRange(s.startIndex..., in: s))
+        guard let last = matches.last, last.numberOfRanges > 1,
+              let r = Range(last.range(at: 1), in: s) else { return nil }
+        return String(s[r])
     }
 
     private func checkInstallerFile(_ url: URL) throws {

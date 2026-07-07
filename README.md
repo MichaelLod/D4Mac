@@ -21,12 +21,12 @@ for the full breakdown.
 
 ## Status
 
-| Game / app | Status |
-|---|---|
-| Battle.net | ✓ launches, login + chat work, keyboard works |
-| Diablo IV | ✓ playable end-to-end (verified 2026-05) |
-| First-launch shader compile | ⚠ ~50 % of the time it hangs once on the Metal pipeline race; second launch always works |
-| Other Blizzard titles | not tested — try and [open an issue](https://github.com/MichaelLod/D4Mac/issues/new/choose) |
+| Game / app                  | Status                                                                                      |
+| --------------------------- | ------------------------------------------------------------------------------------------- |
+| Battle.net                  | ✓ launches, login + chat work, keyboard works                                               |
+| Diablo IV                   | ✓ playable end-to-end (verified 2026-05)                                                    |
+| First-launch shader compile | ⚠ ~50 % of the time it hangs once on the Metal pipeline race; second launch always works    |
+| Other Blizzard titles       | not tested — try and [open an issue](https://github.com/MichaelLod/D4Mac/issues/new/choose) |
 
 ## Requirements
 
@@ -65,6 +65,8 @@ git clone https://github.com/MichaelLod/D4Mac.git
 cd D4Mac
 Resources/Fonts/fetch.sh   # downloads MS Core Fonts (one-time)
 Prereqs/fetch.sh           # downloads VC++ Redistributable (one-time)
+# build.sh also auto-runs Prereqs/fetch-wine-libs.py to stage the x86_64
+# FreeType/GnuTLS chain into the Wine runtime (one-time, ~8 MB from GHCR).
 ./build.sh                 # debug build
 ./build.sh --release       # optimised
 ./build.sh --release --notarize --dmg   # full release pipeline
@@ -102,24 +104,25 @@ manipulation, no admin password.
 
 ## Repository layout
 
-| Path | Purpose |
-|---|---|
-| `Sources/D4Mac/` | SwiftUI launcher source |
-| `Resources/` | App icon, `Info.plist`, fonts, entitlements |
-| `Resources/Fonts/fetch.sh` | One-time fetch of MS Core Fonts For The Web |
-| `Prereqs/fetch.sh` | One-time fetch of VC++ Redistributable installers |
-| `web/` | The [d4mac.com](https://d4mac.com) Next.js site (download landing page, BMC tip checkout, dashboard) |
-| `build.sh` | Build / notarise / DMG packaging |
-| `THIRD_PARTY_LICENSES.md` | Per-component licence breakdown |
-| `LICENSE` | MIT — for the launcher source only |
+| Path                         | Purpose                                                                                              |
+| ---------------------------- | ---------------------------------------------------------------------------------------------------- |
+| `Sources/D4Mac/`             | SwiftUI launcher source                                                                              |
+| `Resources/`                 | App icon, `Info.plist`, fonts, entitlements                                                          |
+| `Resources/Fonts/fetch.sh`   | One-time fetch of MS Core Fonts For The Web                                                          |
+| `Prereqs/fetch.sh`           | One-time fetch of VC++ Redistributable installers                                                    |
+| `Prereqs/fetch-wine-libs.py` | Stages the x86_64 FreeType/GnuTLS chain into Wine's `lib/external` (GHCR bottles)                    |
+| `web/`                       | The [d4mac.com](https://d4mac.com) Next.js site (download landing page, BMC tip checkout, dashboard) |
+| `build.sh`                   | Build / notarise / DMG packaging                                                                     |
+| `THIRD_PARTY_LICENSES.md`    | Per-component licence breakdown                                                                      |
+| `LICENSE`                    | MIT — for the launcher source only                                                                   |
 
 ## Reporting issues
 
 Use [GitHub Issues](https://github.com/MichaelLod/D4Mac/issues/new/choose).
 Include:
 
-- macOS version (e.g. *14.5 Sonoma*)
-- Mac model (e.g. *MacBook Pro M3 Pro*)
+- macOS version (e.g. _14.5 Sonoma_)
+- Mac model (e.g. _MacBook Pro M3 Pro_)
 - D4Mac version (Settings → About)
 - Logs from `~/Library/Logs/D4Mac/`
 - Screenshots if you have them

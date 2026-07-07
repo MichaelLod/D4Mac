@@ -120,6 +120,28 @@ cp -cR "$WINE_RUNTIME" "$APP/Contents/SharedSupport/Wine"
 find "$APP/Contents/SharedSupport/Wine" \
   \( -name "*.bak" -o -name "*.before-*" \) -delete
 
+# Bundled x86_64 FreeType/GnuTLS chain. Wine dlopen()s these libraries by
+# bare leaf name (libfreetype.6.dylib, libgnutls.30.dylib, …) and resolves
+# them out of lib/external via DYLD_FALLBACK_LIBRARY_PATH (see
+# BNetLauncher.swift). Without them, Apple Silicon users who have only ARM
+# Homebrew — or none at all — get blank text in Battle.net Setup (no FreeType)
+# and TLS failures (no GnuTLS), because dyld's only fallback was an Intel
+# Homebrew under /usr/local/lib. Fetched on demand from Homebrew's GHCR bottle
+# registry (no Homebrew required) — see Prereqs/fetch-wine-libs.py.
+WINELIBS_SRC="$SCRIPT_DIR/Prereqs/wine-libs"
+WINELIBS_DST="$APP/Contents/SharedSupport/Wine/lib/external"
+if [ ! -f "$WINELIBS_SRC/libfreetype.6.dylib" ]; then
+  echo "==> fetching x86_64 Wine support libs (one-time, ~8 MB)"
+  /usr/bin/python3 "$SCRIPT_DIR/Prereqs/fetch-wine-libs.py"
+fi
+if [ -f "$WINELIBS_SRC/libfreetype.6.dylib" ]; then
+  mkdir -p "$WINELIBS_DST"
+  cp -p "$WINELIBS_SRC"/*.dylib "$WINELIBS_DST/"
+  echo "bundled wine libs ($(ls "$WINELIBS_SRC"/*.dylib | wc -l | tr -d ' ') x86_64 dylibs)"
+else
+  echo "warning: $WINELIBS_SRC missing — FreeType/GnuTLS won't be bundled"
+fi
+
 # Make sure binaries are executable post-copy.
 chmod +x "$APP/Contents/MacOS/D4Mac"
 find "$APP/Contents/SharedSupport/Wine/bin" -type f -exec chmod +x {} +

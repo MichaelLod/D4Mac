@@ -18,7 +18,7 @@ for url in "${urls[@]}"; do
     echo "have: $name ($(stat -f %z "$name") bytes)"
     continue
   fi
-  echo "fetching $name…"
+  echo "fetching ${name}..."
   curl -L -o "$name" "$url"
 done
 
