@@ -40,6 +40,7 @@ silently shipping a broken chain.
 """
 
 import glob
+import hashlib
 import json
 import os
 import shutil
@@ -127,6 +128,51 @@ def _pick_x86_bottle(formula, tok):
     raise SystemExit(f"error: no x86_64 macOS bottle for {formula} on GHCR")
 
 
+def _verify_digest(path, digest):
+    """Hard-fail unless `path` hashes to the content-addressed `digest`
+    (`sha256:<hex>`) from the bottle's OCI manifest. TLS already protects
+    transit; this additionally catches a corrupted cache, a truncated
+    download, or a registry serving bytes that don't match the digest it
+    advertised — bytes that would otherwise inherit our Developer ID
+    signature and ship to every user."""
+    alg, _, want = digest.partition(":")
+    h = hashlib.new(alg)
+    with open(path, "rb") as f:
+        for chunk in iter(lambda: f.read(1 << 20), b""):
+            h.update(chunk)
+    if h.hexdigest() != want:
+        raise SystemExit(
+            f"error: bottle digest mismatch for {os.path.basename(path)} "
+            f"(got {h.hexdigest()}, want {want})"
+        )
+
+
+def _safe_extract(tar, dest):
+    """extractall() with path-traversal / link-escape guards, for
+    Python < 3.12 where the `filter='data'` sandbox isn't available (macOS
+    system python3 is 3.9, so the plain fallback below is what actually
+    runs on the build machine). Every member — and every sym/hardlink
+    target — must resolve to inside `dest`; we scan all members and abort
+    before extracting anything, so an escaping link can't land first."""
+    dest_real = os.path.realpath(dest)
+
+    def _inside(p):
+        rp = os.path.realpath(p)
+        return rp == dest_real or rp.startswith(dest_real + os.sep)
+
+    for m in tar.getmembers():
+        if not _inside(os.path.join(dest, m.name)):
+            raise SystemExit(f"error: unsafe path in bottle: {m.name!r}")
+        if m.issym():  # symlink target is relative to the member's dir
+            link = os.path.join(os.path.dirname(os.path.join(dest, m.name)), m.linkname)
+            if not _inside(link):
+                raise SystemExit(f"error: unsafe symlink: {m.name!r} -> {m.linkname!r}")
+        elif m.islnk():  # hardlink target is relative to the archive root
+            if not _inside(os.path.join(dest, m.linkname)):
+                raise SystemExit(f"error: unsafe hardlink: {m.name!r} -> {m.linkname!r}")
+    tar.extractall(dest)
+
+
 def fetch_and_extract(formula, cache, extract_root):
     tok = _token(formula)
     version, os_tag, layer = _pick_x86_bottle(formula, tok)
@@ -136,11 +182,12 @@ def fetch_and_extract(formula, cache, extract_root):
             f"{GHCR}/{formula}/blobs/{layer}", tok, "application/octet-stream"
         ) as r, open(tgz, "wb") as f:
             shutil.copyfileobj(r, f)
+    _verify_digest(tgz, layer)  # integrity-check fresh + cached bottles
     with tarfile.open(tgz) as t:
         try:
-            t.extractall(extract_root, filter="data")  # py3.12+
+            t.extractall(extract_root, filter="data")  # py3.12+ sandbox
         except TypeError:
-            t.extractall(extract_root)
+            _safe_extract(t, extract_root)             # py<3.12 manual guard
     print(f"  {formula:12} {version}.{os_tag}  ({os.path.getsize(tgz)//1024} KB)")
 
 
