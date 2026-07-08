@@ -6,6 +6,7 @@ struct SettingsView: View {
     @AppStorage("vendorSpoof") private var vendorSpoof = true
     @AppStorage("syncStyle") private var syncStyle: SyncStyle = .none
     @State private var showMovePicker = false
+    @State private var showImport = false
 
     // Order = display order in the segmented picker. `none` is first and the
     // default: on macOS 26 / Apple Silicon, esync/msync spin-wait pegs a CPU
@@ -48,6 +49,9 @@ struct SettingsView: View {
                 Task { await bottle.moveSupportDir(to: dest) }
             }
         }
+        .sheet(isPresented: $showImport) {
+            ImportInstallView().environmentObject(bottle)
+        }
     }
 
     private var generalTab: some View {
@@ -75,6 +79,13 @@ struct SettingsView: View {
 
     private var advancedTab: some View {
         Form {
+            Section("Diablo IV game data") {
+                LabeledContent("Already downloaded elsewhere?") {
+                    Button("Import existing install…") { showImport = true }
+                }
+                Text("Reuse a Diablo IV download from CrossOver, Porting Kit, Whisky or GPTK instead of re-downloading ~140 GB.")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
             Section("Bottle") {
                 LabeledContent("Location") {
                     Text(bottle.bottleRoot.resolvingSymlinksInPath().path)
