@@ -36,9 +36,13 @@ struct SettingsView: View {
 
     private var generalTab: some View {
         Form {
-            Section("Performance") {
+            Section {
                 Toggle("Show Metal performance HUD", isOn: $metalHUD)
                 Toggle("Spoof GPU as Apple (recommended for D4)", isOn: $vendorSpoof)
+            } header: {
+                Text("Performance")
+            } footer: {
+                Text("Applied the next time you launch Battle.net.")
             }
             Section("Wine sync primitive") {
                 Picker("Synchronisation", selection: $syncStyle) {

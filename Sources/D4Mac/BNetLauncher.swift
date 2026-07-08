@@ -46,9 +46,25 @@ struct WineProcess {
         let existing = env["DYLD_FALLBACK_LIBRARY_PATH"] ?? "/usr/local/lib:/usr/lib"
         env["DYLD_FALLBACK_LIBRARY_PATH"] = "\(externalLibDir.path):\(existing)"
 
-        env["D3DM_VENDOR_ID"] = "0x106b"
-        env["D3DM_DEVICE_ID"] = "0x0209"
-        env["D3DM_DEVICE_DESCRIPTION"] = "Apple GPU"
+        // Settings toggles. WineProcess isn't @MainActor, so read UserDefaults
+        // directly (that's all @AppStorage is). Defaults here must match the
+        // @AppStorage defaults in SettingsView: vendorSpoof=true, metalHUD=false.
+        // (The syncStyle picker is wired separately — see the sync PR.)
+        let defaults = UserDefaults.standard
+        let vendorSpoof = defaults.object(forKey: "vendorSpoof") == nil
+            ? true : defaults.bool(forKey: "vendorSpoof")
+
+        // GPU vendor/device spoof so D4 takes the Apple-GPU path.
+        if vendorSpoof {
+            env["D3DM_VENDOR_ID"] = "0x106b"
+            env["D3DM_DEVICE_ID"] = "0x0209"
+            env["D3DM_DEVICE_DESCRIPTION"] = "Apple GPU"
+        }
+
+        // Apple's built-in Metal performance HUD (FPS / frame-time overlay).
+        if defaults.bool(forKey: "metalHUD") {
+            env["MTL_HUD_ENABLED"] = "1"
+        }
 
         for (k, v) in extraEnv { env[k] = v }
         return env
