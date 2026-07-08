@@ -24,6 +24,7 @@ final class BottleManager: ObservableObject {
         case installingPrereqs          // Microsoft VC++ runtime, etc.
         case runningInstaller           // BNet installer in Wine
         case launchingBattleNet         // Battle.net.exe running
+        case movingBottle               // relocating the support dir to another volume
 
         var label: String {
             switch self {
@@ -33,6 +34,7 @@ final class BottleManager: ObservableObject {
             case .installingPrereqs:  "Stoking the engine…"
             case .runningInstaller:   "Battle.net's moving in"
             case .launchingBattleNet: "Battle.net is live"
+            case .movingBottle:       "Relocating your bottle…"
             }
         }
 
@@ -50,6 +52,8 @@ final class BottleManager: ObservableObject {
                 "Look for the installer window — click through its prompts and D4Mac will take over once it's home."
             case .launchingBattleNet:
                 "Battle.net opened in its own window. Log in there and pick a game to play."
+            case .movingBottle:
+                "Copying everything to the new location. With games installed this can take a while — don't unplug the drive."
             }
         }
     }
@@ -606,6 +610,81 @@ final class BottleManager: ObservableObject {
             catch { log.warning("launcher reset: couldn't remove \(t.lastPathComponent): \(error.localizedDescription)") }
         }
         log.info("launcher state reset: removed \(removed) item(s)")
+    }
+
+    // MARK: - Move support dir (custom install location)
+
+    /// True when the standard support path is a symlink left by a prior move.
+    var supportDirIsRelocated: Bool {
+        (try? FileManager.default.destinationOfSymbolicLink(atPath: supportRoot.path)) != nil
+    }
+
+    /// Move the entire support dir (bottle, games, shader cache) into
+    /// `destParent`/D4Mac and leave a symlink at the standard
+    /// `~/Library/Application Support/D4Mac` path. Every code path keeps
+    /// resolving through the standard path, so nothing else changes — the
+    /// same approach @0ximu validated manually with an external SSD in
+    /// issue #2, minus the Terminal.
+    ///
+    /// Same-volume this is an instant rename; cross-volume Foundation copies
+    /// then deletes, which for a bottle with games installed takes a while.
+    func moveSupportDir(to destParent: URL) async {
+        defer { phase = .idle }
+        let fm = FileManager.default
+        let standard = supportRoot
+        let current = standard.resolvingSymlinksInPath()
+        let dest = destParent.appendingPathComponent("D4Mac", isDirectory: true)
+
+        guard fm.fileExists(atPath: current.path) else {
+            lastError = D4MacError(
+                "Nothing to move yet.",
+                "The bottle hasn't been created. Install Battle.net first, then move it."
+            ).fullMessage
+            return
+        }
+        guard dest.resolvingSymlinksInPath().path != current.path else {
+            lastError = D4MacError(
+                "It's already there.",
+                "The bottle already lives at \(dest.path)."
+            ).fullMessage
+            return
+        }
+        guard !dest.path.hasPrefix(current.path + "/") else {
+            lastError = D4MacError(
+                "Can't move the bottle into itself.",
+                "Pick a destination outside the current D4Mac data folder."
+            ).fullMessage
+            return
+        }
+        guard !fm.fileExists(atPath: dest.path) else {
+            lastError = D4MacError(
+                "There's already a D4Mac folder there.",
+                "Remove or rename \(dest.path) first, then try again."
+            ).fullMessage
+            return
+        }
+
+        phase = .movingBottle
+        await killWineProcesses()
+
+        do {
+            // Cross-volume moves copy + delete; run off the main actor so the
+            // UI stays responsive for the duration.
+            try await Task.detached(priority: .userInitiated) {
+                try FileManager.default.moveItem(at: current, to: dest)
+            }.value
+            // Drop a stale symlink from any earlier move (harmless no-op when
+            // the standard path was the real dir — it's gone after the move).
+            try? fm.removeItem(at: standard)
+            try fm.createSymbolicLink(at: standard, withDestinationURL: dest)
+            log.info("support dir moved to \(dest.path), symlink left at standard path")
+        } catch {
+            lastError = D4MacError(
+                "Couldn't move the bottle.",
+                "Moving to \(dest.path) failed: \(error.localizedDescription). Your data is either still at the old location or fully at the new one — nothing is half-copied on the same drive; check both if this was a cross-drive move."
+            ).fullMessage
+        }
+        await refresh()
     }
 
     /// `wineserver -k` for our prefix — terminates all Wine processes
