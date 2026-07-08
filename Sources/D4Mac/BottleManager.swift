@@ -573,6 +573,41 @@ final class BottleManager: ObservableObject {
         state = .missing
     }
 
+    /// Non-destructive launcher-state reset. After any hard Wine quit (freeze
+    /// force-quit, crash), Battle.net's Agent often comes back with stale
+    /// `aggregate.json`/product-db state: the game tile shows "Update — Queued",
+    /// the button is dead, and Cancel/Pause do nothing (AgentErrors logs
+    /// "Failed to write aggregate title data"). Wiping the Agent's derived
+    /// state + the launcher caches forces a fresh disk scan on next launch —
+    /// keeps the logged-in account and all game files.
+    /// (Fix contributed by @0ximu in issue #2.)
+    func resetLauncherState() async {
+        await killWineProcesses()
+
+        let fm = FileManager.default
+        let driveC = bottleRoot.appendingPathComponent("drive_c", isDirectory: true)
+        let agent = driveC.appendingPathComponent("ProgramData/Battle.net/Agent", isDirectory: true)
+        let localBNet = driveC.appendingPathComponent(
+            "users/crossover/AppData/Local/Battle.net", isDirectory: true)
+
+        let targets = [
+            agent.appendingPathComponent("aggregate.json"),
+            agent.appendingPathComponent(".product.db"),
+            agent.appendingPathComponent(".product.db.new"),
+            agent.appendingPathComponent(".product.db.old"),
+            agent.appendingPathComponent("Agent.dat"),
+            agent.appendingPathComponent(".patch.result"),
+            localBNet.appendingPathComponent("Cache"),
+            localBNet.appendingPathComponent("BrowserCaches"),
+        ]
+        var removed = 0
+        for t in targets where fm.fileExists(atPath: t.path) {
+            do { try fm.removeItem(at: t); removed += 1 }
+            catch { log.warning("launcher reset: couldn't remove \(t.lastPathComponent): \(error.localizedDescription)") }
+        }
+        log.info("launcher state reset: removed \(removed) item(s)")
+    }
+
     /// `wineserver -k` for our prefix — terminates all Wine processes
     /// (BNet, Agent, GPU subprocesses, etc.) cleanly without touching other
     /// Wine prefixes on the system.

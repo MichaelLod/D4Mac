@@ -68,6 +68,14 @@ struct SettingsView: View {
                 Button("Reveal in Finder") {
                     NSWorkspace.shared.open(bottle.bottleRoot)
                 }
+                LabeledContent("Battle.net stuck on “Update — Queued”?") {
+                    Button("Reset launcher state") {
+                        Task { await bottle.resetLauncherState() }
+                    }
+                    .disabled(bottle.isBusy)
+                }
+                Text("Clears the Blizzard Agent's cached state so the launcher re-scans your games. Non-destructive: keeps your login and all game files. Use after a freeze or force-quit leaves Battle.net confused.")
+                    .font(.caption).foregroundStyle(.secondary)
                 Button("Reset bottle…", role: .destructive) {
                     let alert = NSAlert()
                     alert.messageText = "Reset bottle?"
