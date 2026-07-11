@@ -354,6 +354,7 @@ final class BottleManager: ObservableObject {
     /// initial setup. Returns when wine subprocess exits.
     func runInstaller(_ installerURL: URL) async {
         var progressTask: Task<Void, Never>?
+        installCancelRequested = false
         defer { phase = .idle; installProgress = nil; progressTask?.cancel() }
         do {
             try await ensureBottle()
@@ -381,20 +382,22 @@ final class BottleManager: ObservableObject {
                 ]
             )
             let status = try await proc.run()
+
+            // Reap the session no matter how the installer exited: on success
+            // it auto-launches Battle.net.exe without our CEF flags (which
+            // crash-loops the GPU subprocess), and on failure/cancel a stray
+            // Agent.exe would keep churning in the background. D4Mac's Launch
+            // button does a properly-flagged launch afterwards.
+            log.info("installer exited (status \(status)) — reaping wine session")
+            await killWineProcesses()
+            await refresh()
+
             if status != 0 {
                 throw D4MacError(
                     "Installer exited with code \(status).",
                     "If you cancelled the Battle.net installer, you can ignore this. Otherwise, retry — sometimes the first attempt fails on a fresh prefix."
                 )
             }
-
-            // Battle.net's installer auto-launches Battle.net.exe at the end
-            // without our CEF flags, which crash-loops the GPU subprocess on
-            // Wine. Kill it so the user can click D4Mac's Launch button to
-            // get a properly-flagged launch.
-            log.info("installer done — killing any auto-launched BNet so D4Mac's Launch can take over")
-            await killWineProcesses()
-            await refresh()
             if case .empty = state {
                 throw D4MacError(
                     "Installer ran but Battle.net wasn't found afterwards.",
@@ -402,10 +405,25 @@ final class BottleManager: ObservableObject {
                 )
             }
         } catch let err as D4MacError {
-            lastError = err.fullMessage
+            await killWineProcesses()
+            await refresh()
+            if !installCancelRequested { lastError = err.fullMessage }
         } catch {
-            lastError = error.localizedDescription
+            await killWineProcesses()
+            await refresh()
+            if !installCancelRequested { lastError = error.localizedDescription }
         }
+    }
+
+    /// User-initiated abort of a running Battle.net install. Kills the wine
+    /// session; `runInstaller`'s error path then cleans up quietly (no error
+    /// alert) and the UI returns to the Install button for a fresh start.
+    private var installCancelRequested = false
+    func cancelInstall() async {
+        guard phase == .runningInstaller else { return }
+        log.info("user cancelled install — killing wine session")
+        installCancelRequested = true
+        await killWineProcesses()
     }
 
     // MARK: - Install progress (Blizzard Agent log)

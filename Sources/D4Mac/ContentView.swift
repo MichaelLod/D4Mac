@@ -202,6 +202,18 @@ struct ContentView: View {
                         .monospacedDigit()
                         .foregroundStyle(Color.appCaption)
                 }
+                if bottle.phase == .runningInstaller {
+                    Button {
+                        Task { await bottle.cancelInstall() }
+                    } label: {
+                        Text("Cancel install")
+                            .font(.caption)
+                            .foregroundStyle(Color.appSubhead)
+                            .underline()
+                    }
+                    .buttonStyle(.plain)
+                    .padding(.top, 2)
+                }
             }
             Spacer(minLength: 0)
         }
