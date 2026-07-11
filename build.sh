@@ -115,10 +115,12 @@ echo "==> copy Wine runtime ($(du -sh "$WINE_RUNTIME" | awk '{print $1}'))"
 # clone-on-write copy; on APFS this is instant + zero extra disk.
 cp -cR "$WINE_RUNTIME" "$APP/Contents/SharedSupport/Wine"
 
-# Strip stale upgrade leftovers — *.bak files (from past MoltenVK swaps)
-# and *.before-* symlinks aren't shippable: notarization rejects them.
+# Strip stale upgrade leftovers — rollback copies of patched binaries
+# (*.bak, *.before-*, *.orig, *.pre-*, the stock wineserver.x86_64) aren't
+# shippable: unsigned Mach-Os fail notarization and bloat the bundle.
 find "$APP/Contents/SharedSupport/Wine" \
-  \( -name "*.bak" -o -name "*.before-*" \) -delete
+  \( -name "*.bak" -o -name "*.before-*" -o -name "*.orig" \
+     -o -name "*.pre-*" -o -name "wineserver.x86_64" \) -delete
 
 # Bundled x86_64 FreeType/GnuTLS chain. Wine dlopen()s these libraries by
 # bare leaf name (libfreetype.6.dylib, libgnutls.30.dylib, …) and resolves
