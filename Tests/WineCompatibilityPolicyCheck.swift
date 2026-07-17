@@ -62,9 +62,11 @@ struct WineCompatibilityPolicyCheck {
         name: String,
         failures: inout Int
     ) {
-        guard actual != expected else { return }
-        failures += 1
-        fputs("FAIL \(name): got \(actual), expected \(expected)\n", stderr)
+        guard actual == expected else {
+            failures += 1
+            fputs("FAIL \(name): got \(actual), expected \(expected)\n", stderr)
+            return
+        }
     }
 
     private static func policy(
