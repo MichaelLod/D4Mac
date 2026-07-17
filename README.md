@@ -29,21 +29,21 @@ for the full breakdown.
 
 ## Known issues
 
-### Mid-game freeze on macOS ≤ 26.3 (Rosetta 2 deadlock)
+### Mid-game freeze on macOS < 26.5 (Rosetta 2 deadlock)
 
 After anywhere from a few minutes to several hours of play, the game can
 freeze unrecoverably and macOS shows a persistent beachball. This is a
-**Rosetta 2 deadlock**, not a Wine or D3DMetal bug — the wedged thread
-parks on `os_sync_wait_on_address` inside Apple's `libd3dshared.dylib`,
-triggered when Blizzard's anti-cheat reads translated x86_64 code pages.
-CodeWeavers [publicly confirmed](https://www.codeweavers.com/compatibility/crossover/forum/diablo-iv?msg=348207)
-this is an Apple-side bug — nothing the launcher can patch from the Wine
-side.
+**Rosetta 2 deadlock** — the wedged thread parks on
+`os_sync_wait_on_address` inside Apple's `libd3dshared.dylib`, triggered
+when Blizzard's anti-cheat reads translated x86_64 code pages. CodeWeavers
+[confirmed](https://www.codeweavers.com/blog/mjohnson/2026/5/18/finally-diablo-iv-and-overwatch-are-playable-with-crossover-261-macos-265)
+that both its Wine 26.1 changes and the Rosetta changes in macOS 26.5 are
+required.
 
-**Fix: upgrade to macOS 26.4 Tahoe (released 2026-03-24) or later.**
-Apple silently patched the underlying Rosetta 2 issue in 26.4. Users
-[report 1+ hour clean play sessions](https://www.codeweavers.com/compatibility/crossover/forum/diablo-iv?msg=349051)
-on 26.4 where 26.3 and earlier still freeze.
+**Fix: upgrade to macOS 26.5 Tahoe or later.** D4Mac already bundles a
+Wine 11.0 runtime based on the required CodeWeavers 26.1 sources. On 26.5
+and later, D4Mac also disables its legacy wait-kick automatically because
+the Rosetta workaround is no longer needed.
 
 If you can't upgrade yet, these mitigations reduce — but do not cure —
 the freeze frequency:
@@ -69,7 +69,7 @@ entirely.
 ## Requirements
 
 - Apple Silicon Mac (M1, M2, M3, M4 — any)
-- macOS 14 (Sonoma) or later — **macOS 26.4 Tahoe strongly recommended** for D4 stability (see [Known issues](#known-issues))
+- macOS 14 (Sonoma) or later — **macOS 26.5 Tahoe strongly recommended** for D4 stability (see [Known issues](#known-issues))
 - ~400 MB free for the `.app` bundle, plus space for the Battle.net + game install (Diablo IV is ~80 GB)
 - Apple ID (only if Gatekeeper prompts you to verify the bundle on first launch)
 
