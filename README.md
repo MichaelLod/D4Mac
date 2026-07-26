@@ -25,6 +25,7 @@ for the full breakdown.
 |---|---|
 | Battle.net | ✓ launches, login + chat work, keyboard works |
 | Diablo IV | ✓ playable; ⚠ see [Known issues](#known-issues) for in-game hangs |
+| Diablo II: Resurrected | ✓ playable on macOS 26.5+; ⚠ can occasionally crash after ⌘-Tab ([known upstream bug](https://www.codeweavers.com/blog/mjohnson/2026/5/18/finally-diablo-iv-and-overwatch-are-playable-with-crossover-261-macos-265)) — avoid app-switching mid-run |
 | Other Blizzard titles | not tested — try and [open an issue](https://github.com/MichaelLod/D4Mac/issues/new/choose) |
 
 ## Known issues
