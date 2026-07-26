@@ -183,9 +183,12 @@ extension BottleManager {
                 "ROSETTA_ADVERTISE_AVX": "1",
                 "DOTNET_EnableWriteXorExecute": "0"
             ]
-            if autokillEnabled {
-                baseEnv["D4_WATCHDOG_AUTOKILL"] = "1"
-            }
+            baseEnv.merge(
+                WineCompatibilityPolicy.recoveryPatchEnvironment(
+                    operatingSystemVersion: ProcessInfo.processInfo.operatingSystemVersion,
+                    watchdogAutokillEnabled: autokillEnabled
+                )
+            ) { _, new in new }
 
             // Auto-relaunch loop: when the watchdog kills the process via
             // SIGKILL we briefly show a "Recovering from freeze…" status and
