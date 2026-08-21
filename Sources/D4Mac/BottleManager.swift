@@ -185,6 +185,7 @@ final class BottleManager: ObservableObject {
         }
 
         try? await disableCrashDialog()
+        try? await seedControllerRegistry()
         try await deployGPTKBinaries()
         try installCoreFonts()
         try await installPrerequisites()
@@ -313,6 +314,51 @@ final class BottleManager: ObservableObject {
             ]
         )
         _ = try await proc.run()
+    }
+
+    /// Route Sony gamepads through winebus's SDL backend instead of raw
+    /// IOHID. Wine force-prefers "hidraw" (raw HID reports) for DualShock 4
+    /// and DualSense pads, but on macOS the raw path only yields a generic
+    /// HID device — no WINE_COMP_XINPUT compatible id, no winexinput
+    /// XI_00/IG_00 interfaces — so XInput-only games like Diablo IV see no
+    /// controller at all. A per-device `Hidraw=0` under
+    /// Services\WineBus\Devices flips just these pads onto the SDL path
+    /// (libSDL2 is bundled in lib/external), which exposes them as XInput
+    /// gamepads; winebus then drops the raw IOHID duplicate, so inputs are
+    /// never doubled. Xbox pads already default to the SDL path and need no
+    /// override. Diagnosed by @imimips-svg in issue #13.
+    private func seedControllerRegistry() async throws {
+        let marker = bottleRoot.appendingPathComponent(".d4mac-controller-reg-v1")
+        if FileManager.default.fileExists(atPath: marker.path) { return }
+
+        // VID 054c (Sony) PIDs that Wine's is_hidraw_enabled() force-prefers
+        // hidraw for (winebus.sys/unixlib.h): DualShock 4 v1 [CUH-ZCT1x],
+        // v2 [CUH-ZCT2x], the DS4 USB wireless adaptor, DualSense, and
+        // DualSense Edge.
+        let sonyPadPIDs = ["05c4", "09cc", "0ba0", "0ce6", "0df2"]
+        for pid in sonyPadPIDs {
+            let proc = WineProcess(
+                wine: wineBin,
+                prefix: bottleRoot,
+                externalLibDir: libExternal,
+                args: [
+                    "reg", "add",
+                    #"HKLM\System\CurrentControlSet\Services\WineBus\Devices\054c/"# + pid,
+                    "/v", "Hidraw",
+                    "/t", "REG_DWORD",
+                    "/d", "0",
+                    "/f"
+                ]
+            )
+            let status = try await proc.run()
+            guard status == 0 else {
+                // No marker written → retried on next launch.
+                log.warning("controller registry seed failed for 054c/\(pid) (exit \(status))")
+                return
+            }
+        }
+        log.info("seeded Hidraw=0 for \(sonyPadPIDs.count) Sony pad ids (SDL → XInput path)")
+        try? "ok".write(to: marker, atomically: true, encoding: .utf8)
     }
 
     /// Copy/hardlink GPTK PE DLLs into the bottle's system32. Replaces Wine's
