@@ -122,26 +122,31 @@ find "$APP/Contents/SharedSupport/Wine" \
   \( -name "*.bak" -o -name "*.before-*" -o -name "*.orig" \
      -o -name "*.pre-*" -o -name "wineserver.x86_64" \) -delete
 
-# Bundled x86_64 FreeType/GnuTLS chain. Wine dlopen()s these libraries by
-# bare leaf name (libfreetype.6.dylib, libgnutls.30.dylib, …) and resolves
-# them out of lib/external via DYLD_FALLBACK_LIBRARY_PATH (see
-# BNetLauncher.swift). Without them, Apple Silicon users who have only ARM
-# Homebrew — or none at all — get blank text in Battle.net Setup (no FreeType)
-# and TLS failures (no GnuTLS), because dyld's only fallback was an Intel
-# Homebrew under /usr/local/lib. Fetched on demand from Homebrew's GHCR bottle
-# registry (no Homebrew required) — see Prereqs/fetch-wine-libs.py.
+# Bundled x86_64 FreeType/GnuTLS/SDL2 chain. Wine dlopen()s these libraries
+# by bare leaf name (libfreetype.6.dylib, libgnutls.30.dylib,
+# libSDL2-2.0.0.dylib, …) and resolves them out of lib/external via
+# DYLD_FALLBACK_LIBRARY_PATH (see BNetLauncher.swift). Without them, Apple
+# Silicon users who have only ARM Homebrew — or none at all — get blank text
+# in Battle.net Setup (no FreeType), TLS failures (no GnuTLS), and gamepads
+# that never reach games as XInput devices (no SDL2 for winebus — issue #13),
+# because dyld's only fallback was an Intel Homebrew under /usr/local/lib.
+# Fetched on demand from Homebrew's GHCR bottle registry (no Homebrew
+# required) — see Prereqs/fetch-wine-libs.py. The freshness check names every
+# seed so a wine-libs dir cached by an older checkout refetches the new libs.
 WINELIBS_SRC="$SCRIPT_DIR/Prereqs/wine-libs"
 WINELIBS_DST="$APP/Contents/SharedSupport/Wine/lib/external"
-if [ ! -f "$WINELIBS_SRC/libfreetype.6.dylib" ]; then
-  echo "==> fetching x86_64 Wine support libs (one-time, ~8 MB)"
+if [ ! -f "$WINELIBS_SRC/libfreetype.6.dylib" ] \
+   || [ ! -f "$WINELIBS_SRC/libSDL2-2.0.0.dylib" ]; then
+  echo "==> fetching x86_64 Wine support libs (one-time, ~10 MB)"
   /usr/bin/python3 "$SCRIPT_DIR/Prereqs/fetch-wine-libs.py"
 fi
-if [ -f "$WINELIBS_SRC/libfreetype.6.dylib" ]; then
+if [ -f "$WINELIBS_SRC/libfreetype.6.dylib" ] \
+   && [ -f "$WINELIBS_SRC/libSDL2-2.0.0.dylib" ]; then
   mkdir -p "$WINELIBS_DST"
   cp -p "$WINELIBS_SRC"/*.dylib "$WINELIBS_DST/"
   echo "bundled wine libs ($(ls "$WINELIBS_SRC"/*.dylib | wc -l | tr -d ' ') x86_64 dylibs)"
 else
-  echo "warning: $WINELIBS_SRC missing — FreeType/GnuTLS won't be bundled"
+  echo "warning: $WINELIBS_SRC incomplete — FreeType/GnuTLS/SDL2 won't be bundled"
 fi
 
 # Make sure binaries are executable post-copy.

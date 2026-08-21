@@ -1,18 +1,21 @@
 #!/usr/bin/env python3
-"""Stage the x86_64 FreeType/GnuTLS dependency chain for bundling in
+"""Stage the x86_64 FreeType/GnuTLS/SDL2 dependency chain for bundling in
 D4Mac.app's Wine runtime (Contents/SharedSupport/Wine/lib/external/).
 
 Why this exists
 ---------------
 The bundled Wine is x86_64 (runs under Rosetta). At runtime it dlopen()s a
 handful of unix libraries by bare leaf name — `libfreetype.6.dylib` (font
-rendering, used by win32u) and `libgnutls.30.dylib` (TLS, used by secur32/
-bcrypt). Those names are resolved via DYLD_FALLBACK_LIBRARY_PATH, which the
+rendering, used by win32u), `libgnutls.30.dylib` (TLS, used by secur32/
+bcrypt) and `libSDL2-2.0.0.dylib` (game-controller backend, used by
+winebus). Those names are resolved via DYLD_FALLBACK_LIBRARY_PATH, which the
 launcher points at `lib/external` first (see BNetLauncher.swift). If no
 x86_64 build of these libs is found there, dyld falls back to /usr/local/lib
 — i.e. an *Intel* Homebrew install. Apple Silicon users who only have ARM
 Homebrew (/opt/homebrew) get nothing, so Battle.net Setup renders blank text
-(no FreeType) and downloads fail (no GnuTLS).
+(no FreeType), downloads fail (no GnuTLS), and gamepads never reach games
+as XInput devices (no SDL2 → winebus falls back to raw IOHID, which never
+spawns the winexinput XI_00/IG_00 interfaces — GitHub issue #13).
 
 Shipping x86_64 builds of the whole chain inside lib/external fixes this for
 every Apple Silicon user, with no Intel Homebrew required.
@@ -49,7 +52,8 @@ import sys
 import tarfile
 import urllib.request
 
-# Formulae whose x86_64 bottles supply the FreeType + GnuTLS dependency chain.
+# Formulae whose x86_64 bottles supply the FreeType + GnuTLS + SDL2
+# dependency chains.
 FORMULAE = [
     "freetype",
     "gnutls",
@@ -61,12 +65,13 @@ FORMULAE = [
     "p11-kit",
     "libidn2",
     "libunistring",
+    "sdl2",
 ]
 
 # The libraries Wine dlopen()s by bare leaf name (confirmed via `strings` on
-# win32u.so / secur32.so / bcrypt.so). Everything else is pulled in as a
-# transitive dependency by the BFS closure below.
-SEEDS = ["libfreetype.6.dylib", "libgnutls.30.dylib"]
+# win32u.so / secur32.so / bcrypt.so / winebus.so). Everything else is pulled
+# in as a transitive dependency by the BFS closure below.
+SEEDS = ["libfreetype.6.dylib", "libgnutls.30.dylib", "libSDL2-2.0.0.dylib"]
 
 # x86_64 macOS bottle tags, preferred newest-first. We never want arm64_* or
 # *_linux. A formula's newest version usually still has one of these on GHCR.

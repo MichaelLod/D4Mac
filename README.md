@@ -105,7 +105,7 @@ cd D4Mac
 Resources/Fonts/fetch.sh   # downloads MS Core Fonts (one-time)
 Prereqs/fetch.sh           # downloads VC++ Redistributable (one-time)
 # build.sh also auto-runs Prereqs/fetch-wine-libs.py to stage the x86_64
-# FreeType/GnuTLS chain into the Wine runtime (one-time, ~8 MB from GHCR).
+# FreeType/GnuTLS/SDL2 chain into the Wine runtime (one-time, ~10 MB from GHCR).
 ./build.sh                 # debug build
 ./build.sh --release       # optimised
 ./build.sh --release --notarize --dmg   # full release pipeline
@@ -149,7 +149,7 @@ manipulation, no admin password.
 | `Resources/`                 | App icon, `Info.plist`, fonts, entitlements                                                          |
 | `Resources/Fonts/fetch.sh`   | One-time fetch of MS Core Fonts For The Web                                                          |
 | `Prereqs/fetch.sh`           | One-time fetch of VC++ Redistributable installers                                                    |
-| `Prereqs/fetch-wine-libs.py` | Stages the x86_64 FreeType/GnuTLS chain into Wine's `lib/external` (GHCR bottles)                    |
+| `Prereqs/fetch-wine-libs.py` | Stages the x86_64 FreeType/GnuTLS/SDL2 chain into Wine's `lib/external` (GHCR bottles)               |
 | `web/`                       | The [d4mac.com](https://d4mac.com) Next.js site (download landing page, BMC tip checkout, dashboard) |
 | `build.sh`                   | Build / notarise / DMG packaging                                                                     |
 | `THIRD_PARTY_LICENSES.md`    | Per-component licence breakdown                                                                      |

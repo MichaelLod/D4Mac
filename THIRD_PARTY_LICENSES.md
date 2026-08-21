@@ -181,3 +181,21 @@ so the LGPL relinking provision is satisfiable):
 (`ghcr.io/homebrew/core/*`), staged by `Prereqs/fetch-wine-libs.py`. The
 complete corresponding source for each library is available from its
 upstream above and from [github.com/Homebrew/homebrew-core](https://github.com/Homebrew/homebrew-core).
+
+## SDL2
+
+**Files in bundle**: `Contents/SharedSupport/Wine/lib/external/libSDL2-2.0.0.dylib`
+
+**Why bundled**: Wine's `winebus.sys` game-controller backend `dlopen()`s
+`libSDL2-2.0.0.dylib` by leaf name; without it, gamepads fall back to the
+raw IOHID path and are never exposed to games as XInput devices, so
+XInput-only titles like Diablo IV detect no controller at all.
+
+**Modifications**: unmodified library code. Only the Mach-O install name is
+rewritten to `@rpath/libSDL2-2.0.0.dylib` (via `install_name_tool`) so dyld
+resolves it from `lib/external`. No compiled code is altered.
+
+**Licence**: zlib. Upstream: [libsdl.org](https://www.libsdl.org).
+
+**Source**: prebuilt x86_64 macOS bottle from Homebrew's GHCR registry
+(`ghcr.io/homebrew/core/sdl2`), staged by `Prereqs/fetch-wine-libs.py`.
