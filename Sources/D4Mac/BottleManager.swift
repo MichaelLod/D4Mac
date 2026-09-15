@@ -94,7 +94,7 @@ final class BottleManager: ObservableObject {
     var supportRoot: URL {
         let fm = FileManager.default
         let base = fm.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
-        return base.appendingPathComponent("D4Mac", isDirectory: true)
+        return base.appendingPathComponent(DevelopmentConfiguration.supportDirectoryName, isDirectory: true)
     }
 
     /// `~/Library/Application Support/D4Mac/Bottle/`
@@ -190,7 +190,11 @@ final class BottleManager: ObservableObject {
         try installCoreFonts()
         try await installPrerequisites()
 
-        ShaderCacheRedirect.setup(supportRoot: supportRoot)
+        // Never rewrite the installed app's account-wide D3DMetal cache link.
+        // Gameplay comparisons still require a separate macOS test account.
+        if !DevelopmentConfiguration.isDevelopment {
+            ShaderCacheRedirect.setup(supportRoot: supportRoot)
+        }
     }
 
     /// `wine wineboot --init` against our prefix. Creates drive_c skeleton,
@@ -367,7 +371,10 @@ final class BottleManager: ObservableObject {
         let fm = FileManager.default
         try fm.createDirectory(at: systemDir32, withIntermediateDirectories: true)
 
-        for dll in ["d3d12.dll", "dxgi.dll", "d3d11.dll"] {
+        let dlls = DevelopmentConfiguration.graphicsVersion.hasPrefix("4.")
+            ? ["d3d10.dll", "d3d11.dll", "d3d12.dll", "dxgi.dll", "nvapi64.dll"]
+            : ["d3d12.dll", "dxgi.dll", "d3d11.dll"]
+        for dll in dlls {
             let src = gptkPEDir.appendingPathComponent(dll)
             let dst = systemDir32.appendingPathComponent(dll)
             guard fm.fileExists(atPath: src.path) else { continue }
@@ -705,7 +712,7 @@ final class BottleManager: ObservableObject {
         let fm = FileManager.default
         let standard = supportRoot
         let current = standard.resolvingSymlinksInPath()
-        let dest = destParent.appendingPathComponent("D4Mac", isDirectory: true)
+        let dest = destParent.appendingPathComponent(DevelopmentConfiguration.supportDirectoryName, isDirectory: true)
 
         guard fm.fileExists(atPath: current.path) else {
             lastError = D4MacError(
@@ -768,11 +775,17 @@ final class BottleManager: ObservableObject {
         kill.executableURL = wineserverBin
         kill.arguments = ["-k"]
         kill.environment = ["WINEPREFIX": bottleRoot.path]
-        try? kill.run()
-        // wineserver -k returns when all clients exit; usually <1 s.
+        // Install the handler before starting: a quick exit must not strand the continuation.
         await withCheckedContinuation { (cont: CheckedContinuation<Void, Never>) in
             kill.terminationHandler = { _ in cont.resume() }
+            do {
+                try kill.run()
+            } catch {
+                cont.resume()
+            }
         }
+        // Global name-based cleanup could kill the user's installed Battle.net.
+        guard !DevelopmentConfiguration.isDevelopment else { return }
         // Sometimes a stray process lingers; SIGKILL by name as a backstop.
         let names = ["Battle.net.exe", "Agent.exe", "Battle.net-Setup"]
         for name in names {

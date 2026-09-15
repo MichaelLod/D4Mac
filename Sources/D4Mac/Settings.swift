@@ -136,7 +136,7 @@ struct SettingsView: View {
 
     private var aboutTab: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("D4Mac is a free, non-commercial Battle.net launcher for Apple Silicon, built on Wine 11.0 and Apple's Game Porting Toolkit 3.0.")
+            Text("D4Mac is a free, non-commercial Battle.net launcher for Apple Silicon, built on Wine 11.0 and Apple's D3DMetal \(DevelopmentConfiguration.graphicsVersion).")
                 .font(.callout)
             Divider()
             Text("Bundled software credits & licenses")

@@ -28,6 +28,23 @@ commercial product** while these binaries are present. Distributing for
 free public download is the only redistribution path Apple's licence
 permits.
 
+## Optional GPTK 4 development payload
+
+`build.sh --development --gptk PATH` replaces the GPTK 3 graphics payload
+only in the generated development app. The current importer recognizes the
+GPTK 4 beta 2 file layout, reads the actual framework version, and includes
+the supplied `License.rtf`, `Acknowledgements.rtf`, and `Read Me.rtf` unchanged
+as `Apple-GPTK-*` files in `Contents/Resources/`. Refer to those accompanying
+terms for the selected payload; the GPTK 3 description above describes the
+default runtime, not every future GPTK license or distribution.
+
+This payload includes `d3d10`, `d3d11`, `d3d12`, `dxgi`, `nvapi64`, and
+`nvngx-on-metalfx` PE and Unix forwarders plus D3DMetal and libd3dshared.
+Obsolete `atidxx64` and `nvngx` GPTK 3 forwarders are removed from the copied
+runtime; optional MetalFX forwarders are not renamed or enabled. The
+source repository does not contain Apple's payload. Development builds
+cannot use this project's release/notarization flags.
+
 ## Wine 11.0
 
 **Files in bundle**: everything else under `Contents/SharedSupport/Wine/`,

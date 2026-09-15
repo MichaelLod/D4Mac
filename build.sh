@@ -10,6 +10,8 @@
 #     SharedSupport/Wine/                  (copy of wine-cx26.1)
 #
 # Args:
+#   --development  separate app identity and bottle; disables updates
+#   --gptk PATH    import a GPTK 4 evaluation environment (requires --development)
 #   --release    swift build -c release (slower, optimised)
 #   --notarize   after build, codesign + notarize via stored credentials
 #                (requires APPLE_DEV_ID + APPLE_NOTARY_PROFILE)
@@ -26,14 +28,37 @@ APP="$BUILD/D4Mac.app"
 CONFIG="debug"
 NOTARIZE=0
 DMG=0
-for arg in "$@"; do
-  case "$arg" in
+DEVELOPMENT=0
+GPTK_SOURCE=""
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --development) DEVELOPMENT=1 ;;
+    --gptk)
+      [ "$#" -ge 2 ] && [ -n "$2" ] || { echo "error: --gptk requires a path" >&2; exit 1; }
+      GPTK_SOURCE="$2"; shift ;;
     --release)  CONFIG="release" ;;
     --notarize) NOTARIZE=1; CONFIG="release" ;;
     --dmg)      DMG=1 ;;
-    -h|--help)  sed -n '1,22p' "$0"; exit 0 ;;
+    -h|--help)  sed -n '1,24p' "$0"; exit 0 ;;
+    *) echo "error: unknown argument: $1" >&2; exit 1 ;;
   esac
+  shift
 done
+
+if [ -n "$GPTK_SOURCE" ] && [ "$DEVELOPMENT" != 1 ]; then
+  echo "error: GPTK 4 currently requires --development" >&2; exit 1
+fi
+if [ "$DEVELOPMENT" = 1 ] && { [ "$NOTARIZE" = 1 ] || [ "$DMG" = 1 ]; }; then
+  echo "error: development builds cannot be notarized or packaged as a release DMG" >&2; exit 1
+fi
+PROFILE="gptk3"
+if [ -n "$GPTK_SOURCE" ]; then
+  /usr/bin/python3 "$SCRIPT_DIR/Scripts/import-gptk.py" "$GPTK_SOURCE"
+  PROFILE="gptk4"
+fi
+if [ "$DEVELOPMENT" = 1 ]; then
+  APP="$BUILD/D4Mac Development $PROFILE.app"
+fi
 
 [ -d "$WINE_RUNTIME" ] || { echo "error: $WINE_RUNTIME missing" >&2; exit 1; }
 [ -f "$WINE_RUNTIME/bin/wine" ] || { echo "error: wine binary missing in runtime" >&2; exit 1; }
@@ -58,6 +83,16 @@ rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources" "$APP/Contents/SharedSupport" "$APP/Contents/Frameworks"
 
 cp -p "$SCRIPT_DIR/Resources/Info.plist" "$APP/Contents/Info.plist"
+if [ "$DEVELOPMENT" = 1 ]; then
+  /usr/libexec/PlistBuddy -c "Set :CFBundleIdentifier com.d4mac.app.dev.$PROFILE" "$APP/Contents/Info.plist"
+  /usr/libexec/PlistBuddy -c "Set :CFBundleName D4Mac Development $PROFILE" "$APP/Contents/Info.plist"
+  /usr/libexec/PlistBuddy -c "Set :CFBundleDisplayName D4Mac Development $PROFILE" "$APP/Contents/Info.plist"
+  /usr/libexec/PlistBuddy -c "Delete :SUFeedURL" "$APP/Contents/Info.plist"
+  /usr/libexec/PlistBuddy -c "Delete :SUPublicEDKey" "$APP/Contents/Info.plist"
+  if [ -n "$GPTK_SOURCE" ]; then
+    /usr/libexec/PlistBuddy -c "Set :LSMinimumSystemVersion 15.0" "$APP/Contents/Info.plist"
+  fi
+fi
 cp -p "$SWIFT_BIN" "$APP/Contents/MacOS/D4Mac"
 
 # Embed Sparkle so the Mach-O binary's @rpath/Sparkle.framework load resolves.
@@ -114,6 +149,9 @@ fi
 echo "==> copy Wine runtime ($(du -sh "$WINE_RUNTIME" | awk '{print $1}'))"
 # clone-on-write copy; on APFS this is instant + zero extra disk.
 cp -cR "$WINE_RUNTIME" "$APP/Contents/SharedSupport/Wine"
+if [ -n "$GPTK_SOURCE" ]; then
+  /usr/bin/python3 "$SCRIPT_DIR/Scripts/import-gptk.py" "$GPTK_SOURCE" --app "$APP"
+fi
 
 # Strip stale upgrade leftovers — rollback copies of patched binaries
 # (*.bak, *.before-*, *.orig, *.pre-*, the stock wineserver.x86_64) aren't
@@ -163,6 +201,10 @@ echo "  size: $(du -sh "$APP" | awk '{print $1}')"
 echo
 echo "to launch:"
 echo "  open '$APP'"
+if [ "$DEVELOPMENT" = 1 ]; then
+  echo "Development bottle and preferences are separate. Use a separate macOS test account"
+  echo "for gameplay: D3DMetal still uses the account-wide shader cache."
+fi
 echo
 
 if [ "$NOTARIZE" = "1" ]; then

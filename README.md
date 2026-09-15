@@ -115,6 +115,80 @@ You'll also need a built Wine 11.0 runtime staged at `../wine-cx26.1/`.
 See [`THIRD_PARTY_LICENSES.md`](./THIRD_PARTY_LICENSES.md) for sources, or
 the LGPL CodeWeavers release at [media.codeweavers.com/pub/crossover/source/](https://media.codeweavers.com/pub/crossover/source/).
 
+### Experimental GPTK 4 development builds
+
+Keep the baseline runtime at `../wine-cx26.1/`. Mount your own Apple
+**Evaluation environment for Windows games 4.0 beta 2** disk image, then run:
+
+```bash
+# Separate GPTK 3 baseline (uses the original staged runtime)
+./build.sh --development
+
+# GPTK 4 experiment; pass the volume root, not its redist/lib subdirectory
+./build.sh --development --gptk "/Volumes/Evaluation environment for Windows games 4.0 beta 2"
+```
+
+The outputs coexist in `build/D4Mac Development gptk3.app` and
+`build/D4Mac Development gptk4.app`. Neither command installs into
+`/Applications`. `--release` can be added for optimized local builds;
+`--notarize` and `--dmg` are rejected for development builds. The existing
+build without these new options retains its original behavior.
+
+The importer validates D3DMetal's actual framework version and the known
+GPTK 4 file set before rebuilding. It replaces only the graphics payload in
+the app's copied runtime, preserves relative symlinks, refreshes D3DMetal
+aliases, and removes obsolete GPTK 3 `atidxx64`/`nvngx` forwarders. It leaves
+Wine and the 32-bit DXMT path intact. Unexpected versions or payload layouts
+fail explicitly. The optional `nvngx-on-metalfx` files retain their original
+names; experimental MetalFX is not enabled by this integration.
+
+Apple's supplied license, acknowledgements, and README are copied unchanged
+into the app's Resources. `GPTK.json` records the detected version and hashes
+of the imported payload **before app signing**, which can change Mach-O
+bytes. GPTK binaries and license documents are supplied locally and are not
+added to the source repository. GPTK 4 currently requires `--development`;
+this is not a release-ready compatibility claim. GPTK 4 builds advertise a
+macOS 15 minimum, matching the supplied README.
+
+Development apps use separate bundle identifiers, preferences, and support
+folders:
+
+| Profile | Bundle identifier | Folder under `~/Library/Application Support/` |
+|---|---|---|
+| Original | `com.d4mac.app` | `D4Mac` |
+| GPTK 3 development | `com.d4mac.app.dev.gptk3` | `D4Mac Development GPTK3` |
+| GPTK 4 development | `com.d4mac.app.dev.gptk4` | `D4Mac Development GPTK4` |
+
+They do not start Sparkle, expose update checks, rewrite the shared
+D3DMetal cache symlink, or use global process-name cleanup. Wine cleanup is
+limited to their own prefix. Do not point their data folders at an existing
+working bottle.
+
+**Gameplay still requires a separate macOS test account to protect the
+working account's graphics cache.** D3DMetal uses an account-wide cache; a
+separate bottle does not isolate that cache. Launcher-only startup is safe
+to check without creating a bottle. Do not run the bare Swift executable or
+`swift run` for testing: isolation is selected by the packaged app's bundle
+identifier.
+
+Before reporting compatibility, test a fresh bottle in that separate account,
+install Battle.net and prerequisites, then compare Diablo IV startup,
+rendering, controller input, and sustained play against the GPTK 3 baseline.
+Run one profile at a time. Keep each bottle independent and record the app,
+macOS, D3DMetal, game, and Wine versions with logs. The importer and native
+launcher passing checks does not establish that Diablo IV runs under GPTK 4.
+
+Focused checks (macOS):
+
+```bash
+PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s Tests -p test_gptk_import.py
+mkdir -p .build/checks
+swiftc Sources/D4Mac/DevelopmentConfiguration.swift Tests/DevelopmentConfigurationCheck.swift -o .build/checks/development
+.build/checks/development
+swiftc Sources/D4Mac/WineCompatibilityPolicy.swift Tests/WineCompatibilityPolicyCheck.swift -o .build/checks/wine-policy
+.build/checks/wine-policy
+```
+
 `build.sh --release --notarize --dmg` produces a signed + notarised DMG ready for distribution. Notarisation requires:
 
 - Developer ID Application certificate installed in your keychain

@@ -4,14 +4,18 @@ import Sparkle
 @main
 struct D4MacApp: App {
     @StateObject private var bottle = BottleManager()
-    private let updaterController: SPUStandardUpdaterController
+    private let updaterController: SPUStandardUpdaterController?
 
     init() {
-        updaterController = SPUStandardUpdaterController(
-            startingUpdater: true,
-            updaterDelegate: nil,
-            userDriverDelegate: nil
-        )
+        if DevelopmentConfiguration.isDevelopment {
+            updaterController = nil
+        } else {
+            updaterController = SPUStandardUpdaterController(
+                startingUpdater: true,
+                updaterDelegate: nil,
+                userDriverDelegate: nil
+            )
+        }
     }
 
     var body: some Scene {
@@ -27,7 +31,9 @@ struct D4MacApp: App {
         .commands {
             CommandGroup(replacing: .newItem) {}
             CommandGroup(after: .appInfo) {
-                CheckForUpdatesView(updater: updaterController.updater)
+                if let updaterController {
+                    CheckForUpdatesView(updater: updaterController.updater)
+                }
             }
         }
 
