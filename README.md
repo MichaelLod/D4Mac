@@ -5,6 +5,10 @@
 
 🌐 [d4mac.com](https://d4mac.com) · 📥 [Download latest](https://github.com/MichaelLod/D4Mac/releases/latest) · 🐛 [Report an issue](https://github.com/MichaelLod/D4Mac/issues/new/choose) · 🍺 [Buy me a beer](https://d4mac.com/#beer)
 
+**🆕 World of Warcraft: Forever runs on D4Mac.** The beta already launches
+through the same Battle.net client as Diablo IV (verified up to character
+creation); full launch is Nov 4, 2026. [Tell us how it plays](https://github.com/MichaelLod/D4Mac/issues/new/choose).
+
 ---
 
 ## What it is
@@ -26,6 +30,7 @@ for the full breakdown.
 | Battle.net | ✓ launches, login + chat work, keyboard works |
 | Diablo IV | ✓ playable; ⚠ see [Known issues](#known-issues) for in-game hangs |
 | Diablo II: Resurrected | ✓ playable on macOS 26.5+; ⚠ can occasionally crash after ⌘-Tab ([known upstream bug](https://www.codeweavers.com/blog/mjohnson/2026/5/18/finally-diablo-iv-and-overwatch-are-playable-with-crossover-261-macos-265)) — avoid app-switching mid-run |
+| World of Warcraft: Forever | ✓ beta runs — launch, login + character creation verified (macOS 27, M4 Max); in-world reports welcome, [open an issue](https://github.com/MichaelLod/D4Mac/issues/new/choose). Blizzard also ships a native Mac client; D4Mac runs the Windows build instead, an alternative if the native one gives you trouble |
 | Other Blizzard titles | not tested — try and [open an issue](https://github.com/MichaelLod/D4Mac/issues/new/choose) |
 
 ## Known issues
@@ -71,6 +76,7 @@ entirely.
 
 - Apple Silicon Mac (M1, M2, M3, M4 — any)
 - macOS 14 (Sonoma) or later — **macOS 26.5 Tahoe strongly recommended** for D4 stability (see [Known issues](#known-issues))
+- Rosetta 2 — `softwareupdate --install-rosetta --agree-to-license` (without it, launch fails with _"Bad CPU type in executable"_)
 - ~400 MB free for the `.app` bundle, plus space for the Battle.net + game install (Diablo IV is ~80 GB)
 - Apple ID (only if Gatekeeper prompts you to verify the bundle on first launch)
 
@@ -181,4 +187,4 @@ component and its terms.
 
 D4Mac is a community project. Not affiliated with, endorsed by, or
 sponsored by Blizzard Entertainment, Apple Inc., or CodeWeavers Inc.
-"Diablo" and "Battle.net" are trademarks of Blizzard Entertainment.
+"Diablo", "World of Warcraft" and "Battle.net" are trademarks of Blizzard Entertainment.
