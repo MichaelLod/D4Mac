@@ -46,6 +46,18 @@ struct WineProcess {
         let existing = env["DYLD_FALLBACK_LIBRARY_PATH"] ?? "/usr/local/lib:/usr/lib"
         env["DYLD_FALLBACK_LIBRARY_PATH"] = "\(externalLibDir.path):\(existing)"
 
+        // The fallback path alone isn't enough: with only it set, Wine fails
+        // to dlopen libgnutls from lib/external ("failed to load libgnutls"),
+        // TLS is unavailable and Battle.net Setup dies with BLZBNTBTS0000004A.
+        // The same lookup outside Wine succeeds, so it's Wine's process setup
+        // that drops it; DYLD_LIBRARY_PATH (which ntdll.so references, the
+        // fallback isn't) is honoured.
+        if let libPath = env["DYLD_LIBRARY_PATH"], !libPath.isEmpty {
+            env["DYLD_LIBRARY_PATH"] = "\(externalLibDir.path):\(libPath)"
+        } else {
+            env["DYLD_LIBRARY_PATH"] = externalLibDir.path
+        }
+
         // Settings toggles. WineProcess isn't @MainActor, so read UserDefaults
         // directly (that's all @AppStorage is). Defaults here must match the
         // @AppStorage defaults in SettingsView: vendorSpoof=true, metalHUD=false.

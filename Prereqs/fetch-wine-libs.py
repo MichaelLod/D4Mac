@@ -8,8 +8,9 @@ The bundled Wine is x86_64 (runs under Rosetta). At runtime it dlopen()s a
 handful of unix libraries by bare leaf name — `libfreetype.6.dylib` (font
 rendering, used by win32u), `libgnutls.30.dylib` (TLS, used by secur32/
 bcrypt) and `libSDL2-2.0.0.dylib` (game-controller backend, used by
-winebus). Those names are resolved via DYLD_FALLBACK_LIBRARY_PATH, which the
-launcher points at `lib/external` first (see BNetLauncher.swift). If no
+winebus). Those names are resolved via DYLD_LIBRARY_PATH and
+DYLD_FALLBACK_LIBRARY_PATH, which the launcher points at `lib/external`
+(see BNetLauncher.swift). If no
 x86_64 build of these libs is found there, dyld falls back to /usr/local/lib
 — i.e. an *Intel* Homebrew install. Apple Silicon users who only have ARM
 Homebrew (/opt/homebrew) get nothing, so Battle.net Setup renders blank text
@@ -36,7 +37,7 @@ We fetch the proven formula set, extract every bottle, then BFS the dylib
 dependency graph starting from the two libraries Wine actually dlopen()s and
 copy only the reachable x86_64 dylibs. Each copied dylib gets its install id
 and every Homebrew dependency path rewritten to `@rpath/<leaf>` so dyld
-resolves the whole chain out of lib/external (via DYLD_FALLBACK). System libs
+resolves the whole chain out of lib/external (via DYLD_LIBRARY_PATH). System libs
 (/usr/lib, /System) are left untouched. A missing leaf is a hard error — that
 surfaces a new dependency (e.g. a future brotli requirement) instead of
 silently shipping a broken chain.

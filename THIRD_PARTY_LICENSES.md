@@ -151,7 +151,8 @@ the v0.72 tag.
 
 **Why bundled**: the x86_64 Wine runtime `dlopen()`s these libraries by
 leaf name at runtime (FreeType for text rendering, GnuTLS for TLS) and
-resolves them out of `lib/external` via `DYLD_FALLBACK_LIBRARY_PATH`.
+resolves them out of `lib/external` via `DYLD_LIBRARY_PATH` /
+`DYLD_FALLBACK_LIBRARY_PATH`.
 Without an x86_64 build present, Apple Silicon users with only ARM
 Homebrew — or no Homebrew — saw blank text in Battle.net Setup and TLS
 failures. Bundling the whole closure removes the Intel-Homebrew dependency.

@@ -125,7 +125,7 @@ find "$APP/Contents/SharedSupport/Wine" \
 # Bundled x86_64 FreeType/GnuTLS/SDL2 chain. Wine dlopen()s these libraries
 # by bare leaf name (libfreetype.6.dylib, libgnutls.30.dylib,
 # libSDL2-2.0.0.dylib, …) and resolves them out of lib/external via
-# DYLD_FALLBACK_LIBRARY_PATH (see BNetLauncher.swift). Without them, Apple
+# DYLD_LIBRARY_PATH / DYLD_FALLBACK_LIBRARY_PATH (see BNetLauncher.swift). Without them, Apple
 # Silicon users who have only ARM Homebrew — or none at all — get blank text
 # in Battle.net Setup (no FreeType), TLS failures (no GnuTLS), and gamepads
 # that never reach games as XInput devices (no SDL2 for winebus — issue #13),
