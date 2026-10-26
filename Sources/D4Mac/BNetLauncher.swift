@@ -46,12 +46,12 @@ struct WineProcess {
         let existing = env["DYLD_FALLBACK_LIBRARY_PATH"] ?? "/usr/local/lib:/usr/lib"
         env["DYLD_FALLBACK_LIBRARY_PATH"] = "\(externalLibDir.path):\(existing)"
 
-        // The fallback path alone isn't enough: with only it set, Wine fails
-        // to dlopen libgnutls from lib/external ("failed to load libgnutls"),
-        // TLS is unavailable and Battle.net Setup dies with BLZBNTBTS0000004A.
-        // The same lookup outside Wine succeeds, so it's Wine's process setup
-        // that drops it; DYLD_LIBRARY_PATH (which ntdll.so references, the
-        // fallback isn't) is honoured.
+        // Observed on macOS 27: with only the fallback path set, Wine fails to
+        // dlopen libgnutls from lib/external ("failed to load libgnutls"), TLS
+        // is unavailable and Battle.net Setup dies with BLZBNTBTS0000004A.
+        // With DYLD_LIBRARY_PATH also set, it loads. The same dlopen outside
+        // Wine works with the fallback alone. Why Wine ignores the fallback is
+        // unconfirmed (see issue #22).
         if let libPath = env["DYLD_LIBRARY_PATH"], !libPath.isEmpty {
             env["DYLD_LIBRARY_PATH"] = "\(externalLibDir.path):\(libPath)"
         } else {
