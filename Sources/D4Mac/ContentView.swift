@@ -57,6 +57,12 @@ struct ContentView: View {
         ) { result in
             handleInstallerPick(result)
         }
+        // Rosetta may have been installed from Terminal meanwhile.
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+            if bottle.rosettaInstalled == false, !bottle.isBusy {
+                Task { await bottle.checkRosetta() }
+            }
+        }
     }
 
     // MARK: - Header
@@ -81,13 +87,52 @@ struct ContentView: View {
 
     @ViewBuilder
     private var primaryAction: some View {
-        switch bottle.state {
-        case .unknown:
-            ProgressView().controlSize(.large)
-        case .missing, .empty:
-            installCard
-        case .ready:
-            playCard
+        if bottle.rosettaInstalled == false {
+            rosettaCard
+        } else {
+            switch bottle.state {
+            case .unknown:
+                ProgressView().controlSize(.large)
+            case .missing, .empty:
+                installCard
+            case .ready:
+                playCard
+            }
+        }
+    }
+
+    /// Fresh Apple Silicon Macs ship without Rosetta 2, and the bundled Wine
+    /// can't start without it (issue #18).
+    private var rosettaCard: some View {
+        VStack(spacing: 14) {
+            Text("Rosetta 2 needed")
+                .font(.title3)
+                .fontWeight(.medium)
+                .foregroundStyle(Color.appHeadline)
+            Text("Battle.net and its games are Intel apps. macOS runs them through Apple's Rosetta 2, which isn't installed on this Mac yet.")
+                .font(.callout)
+                .foregroundStyle(Color.appSubhead)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: 380)
+
+            Button {
+                Task { await bottle.installRosetta() }
+            } label: {
+                setupButtonLabel("Install Rosetta", systemImage: "cpu")
+            }
+            .buttonStyle(.plain)
+            .disabled(bottle.isBusy)
+            .opacity(bottle.isBusy ? 0.5 : 1)
+            .frame(maxWidth: 320)
+
+            Text("macOS asks for an administrator password. Prefer Terminal? Run\n`softwareupdate --install-rosetta --agree-to-license`")
+                .font(.caption)
+                .foregroundStyle(Color.appCaption)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+                .textSelection(.enabled)
+                .padding(.top, 4)
         }
     }
 
@@ -141,6 +186,27 @@ struct ContentView: View {
             .padding(.top, 4)
             .disabled(bottle.isBusy)
         }
+    }
+
+    private func setupButtonLabel(_ title: String, systemImage: String) -> some View {
+        HStack(spacing: 10) {
+            Image(systemName: systemImage)
+                .font(.system(size: 22, weight: .regular))
+            Text(title)
+                .font(.system(size: 18, weight: .semibold, design: .rounded))
+        }
+        .foregroundStyle(.white)
+        .padding(.horizontal, 26)
+        .padding(.vertical, 14)
+        .frame(maxWidth: .infinity)
+        .background(
+            LinearGradient(
+                colors: [.bnetBlueLight, .bnetBlue, .bnetBlueDeep],
+                startPoint: .top, endPoint: .bottom
+            )
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 9))
+        .shadow(color: .bnetBlue.opacity(0.4), radius: 10, x: 0, y: 4)
     }
 
     private var playCard: some View {

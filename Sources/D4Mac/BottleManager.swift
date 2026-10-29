@@ -19,6 +19,7 @@ final class BottleManager: ObservableObject {
     /// Long-running operations. Drives the inline status banner.
     enum Phase: Equatable {
         case idle
+        case installingRosetta          // softwareupdate --install-rosetta
         case preparingPrefix            // wineboot + GPTK deploy
         case installingFonts            // copy bundled MS Core Fonts + Source Han Sans
         case installingPrereqs          // Microsoft VC++ runtime, etc.
@@ -31,6 +32,7 @@ final class BottleManager: ObservableObject {
         var label: String {
             switch self {
             case .idle: ""
+            case .installingRosetta:  "Installing Rosetta 2…"
             case .preparingPrefix:    "Pouring a fresh bottle…"
             case .installingFonts:    "Teaching it to speak Windows…"
             case .installingPrereqs:  "Stoking the engine…"
@@ -46,6 +48,8 @@ final class BottleManager: ObservableObject {
         var detail: String {
             switch self {
             case .idle: ""
+            case .installingRosetta:
+                "macOS asks for an administrator password, then fetches Rosetta from Apple. Usually under a minute."
             case .preparingPrefix:
                 "Wiring up Wine and slipping in the graphics drivers. ~30 s on the first pour."
             case .installingFonts:
@@ -75,6 +79,10 @@ final class BottleManager: ObservableObject {
     /// available yet (early prefix/prereq phases, or before the Agent starts
     /// reporting). Drives the determinate bar in the status banner.
     @Published var installProgress: InstallProgress?
+
+    /// nil until checked. false swaps the Install/Launch card for the
+    /// Rosetta card: nothing Wine-based can run without it (issue #18).
+    @Published var rosettaInstalled: Bool?
 
     struct InstallProgress: Equatable {
         var fraction: Double      // 0…1, the Agent's "playable_progress"
@@ -136,6 +144,38 @@ final class BottleManager: ObservableObject {
             state = .empty
         }
         log.info("bottle state: \(String(describing: self.state))")
+        // Re-checked only while missing: once x86_64 code runs, it keeps running.
+        if rosettaInstalled != true { await checkRosetta() }
+    }
+
+    // MARK: - First run
+
+    func checkRosetta() async {
+        rosettaInstalled = await Rosetta.isInstalled()
+        log.info("rosetta installed: \(self.rosettaInstalled == true)")
+    }
+
+    /// Install Rosetta 2 behind the macOS admin prompt. A dismissed prompt is
+    /// not an error; the Rosetta card just stays up.
+    func installRosetta() async {
+        guard phase == .idle else { return }
+        phase = .installingRosetta
+        defer { phase = .idle }
+        let result = await Rosetta.install()
+        log.info("rosetta install: \(String(describing: result))")
+        await checkRosetta()
+        let terminal = "You can also install it in Terminal:\nsoftwareupdate --install-rosetta --agree-to-license"
+        switch result {
+        case .installed where rosettaInstalled != true:
+            lastError = D4MacError(
+                "Rosetta 2 installed, but Intel apps still won't run.",
+                "Restart your Mac and open D4Mac again."
+            ).fullMessage
+        case .failed(let message):
+            lastError = D4MacError("Rosetta 2 couldn't be installed.", "\(message)\n\n\(terminal)").fullMessage
+        case .installed, .cancelled:
+            break
+        }
     }
 
     // MARK: - Setup
