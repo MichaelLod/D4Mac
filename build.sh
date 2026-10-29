@@ -122,6 +122,53 @@ find "$APP/Contents/SharedSupport/Wine" \
   \( -name "*.bak" -o -name "*.before-*" -o -name "*.orig" \
      -o -name "*.pre-*" -o -name "wineserver.x86_64" \) -delete
 
+# Point Wine's unix modules at the bundled libs. build-cx-wine.sh links them
+# with `-rpath $HOMEBREW_PREFIX/lib -rpath @executable_path/../lib/external`.
+# The first is the build host's Intel Homebrew: dyld searches it before
+# DYLD_FALLBACK_LIBRARY_PATH, so a stale or partial libgnutls.30.dylib under
+# a user's /usr/local/lib shadows the bundled one and Wine gets no TLS
+# (BLZBNTBTS0000004A, issue #22). The second resolves against the loader in
+# lib/wine/x86_64-unix/, i.e. the non-existent lib/wine/lib/external. Drop
+# absolute rpaths and repoint the broken one at lib/external.
+WINE_UNIX="$APP/Contents/SharedSupport/Wine/lib/wine/x86_64-unix"
+list_rpaths() {
+  otool -l "$1" | awk '/cmd LC_RPATH/ { getline; getline;
+    sub(/^ *path /, ""); sub(/ \(offset [0-9]+\)$/, ""); print }'
+}
+for f in "$WINE_UNIX"/*; do
+  [ -f "$f" ] && [ ! -L "$f" ] || continue
+  case "$(file -b "$f")" in Mach-O*) ;; *) continue ;; esac
+  rpaths=$(list_rpaths "$f") || { echo "error: otool failed on $f" >&2; exit 1; }
+  args=()
+  while IFS= read -r rp; do
+    case "$rp" in
+      /*) args+=(-delete_rpath "$rp") ;;
+      "@executable_path/../lib/external")
+        # A second identical LC_RPATH makes dyld refuse the binary, so if a
+        # fixed Wine build already carries the right one, just drop this.
+        if grep -qxF "@loader_path/../../external" <<<"$rpaths"; then
+          args+=(-delete_rpath "$rp")
+        else
+          args+=(-rpath "$rp" "@loader_path/../../external")
+        fi ;;
+    esac
+  done <<<"$rpaths"
+  if [ ${#args[@]} -gt 0 ]; then
+    signed=0
+    if codesign -d "$f" >/dev/null 2>&1; then signed=1; fi
+    install_name_tool "${args[@]}" "$f"
+    # The rewrite invalidates an existing signature (ntdll.so ships signed);
+    # re-sign ad hoc. --notarize re-signs everything with the Developer ID.
+    if [ "$signed" = 1 ]; then codesign --force --sign - "$f"; fi
+  fi
+done
+leftover=$(for f in "$WINE_UNIX"/*; do list_rpaths "$f" 2>/dev/null || true; done \
+             | grep '^/' || true)
+if [ -n "$leftover" ]; then
+  echo "error: absolute LC_RPATH left in $WINE_UNIX: $leftover" >&2
+  exit 1
+fi
+
 # Bundled x86_64 FreeType/GnuTLS/SDL2 chain. Wine dlopen()s these libraries
 # by bare leaf name (libfreetype.6.dylib, libgnutls.30.dylib,
 # libSDL2-2.0.0.dylib, …) and resolves them out of lib/external via
