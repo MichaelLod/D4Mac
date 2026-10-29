@@ -819,10 +819,12 @@ final class BottleManager: ObservableObject {
         kill.executableURL = wineserverBin
         kill.arguments = ["-k"]
         kill.environment = ["WINEPREFIX": bottleRoot.path]
-        try? kill.run()
-        // wineserver -k returns when all clients exit; usually <1 s.
+        // wineserver -k returns when all clients exit; usually <1 s. With no
+        // server running it exits at once, so the handler must be set before
+        // run() or it never fires.
         await withCheckedContinuation { (cont: CheckedContinuation<Void, Never>) in
             kill.terminationHandler = { _ in cont.resume() }
+            do { try kill.run() } catch { cont.resume() }
         }
         // Sometimes a stray process lingers; SIGKILL by name as a backstop.
         let names = ["Battle.net.exe", "Agent.exe", "Battle.net-Setup"]
