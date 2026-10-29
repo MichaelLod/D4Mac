@@ -7,10 +7,6 @@ struct ContentView: View {
     @State private var showInstallerPicker = false
     @State private var showError = false
 
-    private static let blizzardWinInstallerURL = URL(
-        string: "https://www.battle.net/download/getInstallerForGame?os=win&locale=enUS&version=LIVE&gameProgram=BATTLENET_APP"
-    )!
-
     var body: some View {
         ZStack {
             LinearGradient(
@@ -142,33 +138,17 @@ struct ContentView: View {
                 .font(.title3)
                 .fontWeight(.medium)
                 .foregroundStyle(Color.appHeadline)
-            Text("Pick a Battle.net-Setup.exe to install it into your bottle.")
+            Text("D4Mac downloads Blizzard's Battle.net installer and sets up your bottle.")
                 .font(.callout)
                 .foregroundStyle(Color.appSubhead)
                 .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
                 .frame(maxWidth: 380)
 
             Button {
-                showInstallerPicker = true
+                Task { await bottle.installBattleNet() }
             } label: {
-                HStack(spacing: 10) {
-                    Image(systemName: "arrow.down.circle.fill")
-                        .font(.system(size: 22, weight: .regular))
-                    Text("Install Battle.net")
-                        .font(.system(size: 18, weight: .semibold, design: .rounded))
-                }
-                .foregroundStyle(.white)
-                .padding(.horizontal, 26)
-                .padding(.vertical, 14)
-                .frame(maxWidth: .infinity)
-                .background(
-                    LinearGradient(
-                        colors: [.bnetBlueLight, .bnetBlue, .bnetBlueDeep],
-                        startPoint: .top, endPoint: .bottom
-                    )
-                )
-                .clipShape(RoundedRectangle(cornerRadius: 9))
-                .shadow(color: .bnetBlue.opacity(0.4), radius: 10, x: 0, y: 4)
+                setupButtonLabel("Install Battle.net", systemImage: "arrow.down.circle.fill")
             }
             .buttonStyle(.plain)
             .disabled(bottle.isBusy)
@@ -176,9 +156,9 @@ struct ContentView: View {
             .frame(maxWidth: 320)
 
             Button {
-                NSWorkspace.shared.open(Self.blizzardWinInstallerURL)
+                showInstallerPicker = true
             } label: {
-                Label("Download Battle.net exe from Blizzard", systemImage: "safari")
+                Label("Use a Battle.net-Setup.exe you already have…", systemImage: "folder")
                     .font(.callout)
                     .foregroundStyle(Color.bnetBlueLight)
             }
@@ -259,6 +239,11 @@ struct ContentView: View {
                     .font(.caption)
                     .foregroundStyle(Color.appSubhead)
                     .fixedSize(horizontal: false, vertical: true)
+                if let f = bottle.downloadProgress, bottle.phase == .downloadingInstaller {
+                    ProgressView(value: f)
+                        .tint(.bnetBlueLight)
+                        .padding(.top, 4)
+                }
                 if let p = bottle.installProgress, bottle.phase == .runningInstaller {
                     ProgressView(value: p.fraction)
                         .tint(.bnetBlueLight)
