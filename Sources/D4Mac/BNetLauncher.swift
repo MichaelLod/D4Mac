@@ -70,6 +70,18 @@ struct WineProcess {
         return env
     }
 
+    /// "Bad CPU type in executable" from spawning Wine means Rosetta 2 is
+    /// missing (issue #18). The Rosetta card normally catches this first;
+    /// this keeps the message useful if a Wine call slips through anyway.
+    static func explainLaunchFailure(_ error: Error) -> Error {
+        let ns = error as NSError
+        guard ns.domain == NSPOSIXErrorDomain, ns.code == Int(EBADARCH) else { return error }
+        return D4MacError(
+            "Rosetta 2 isn't installed.",
+            "D4Mac's Wine is an Intel program and needs Apple's Rosetta 2. Reopen D4Mac to install it, or run in Terminal:\nsoftwareupdate --install-rosetta --agree-to-license"
+        )
+    }
+
     /// Run wine and resolve when the subprocess exits.
     @discardableResult
     func run() async throws -> Int32 {
@@ -88,7 +100,7 @@ struct WineProcess {
             do {
                 try p.run()
             } catch {
-                cont.resume(throwing: error)
+                cont.resume(throwing: Self.explainLaunchFailure(error))
                 return
             }
 
@@ -115,7 +127,7 @@ struct WineProcess {
             do {
                 try p.run()
             } catch {
-                cont.resume(throwing: error)
+                cont.resume(throwing: Self.explainLaunchFailure(error))
                 return
             }
 
