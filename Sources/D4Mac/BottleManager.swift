@@ -429,12 +429,20 @@ final class BottleManager: ObservableObject {
             )
             let status = try await proc.run()
 
+            // Blizzard's current Battle.net-Setup.exe is a two-stage
+            // bootstrapper: the file the user picked downloads the real
+            // installer to C:\ProgramData\Battle.net\Setup\bna_2\, respawns it
+            // and exits. Reaping right away kills that second stage before it
+            // opens its window (issue #20), so let it finish first.
+            log.info("installer exited (status \(status)) — waiting for any respawned setup stage")
+            await waitForInstallerHandoff()
+
             // Reap the session no matter how the installer exited: on success
             // it auto-launches Battle.net.exe without our CEF flags (which
             // crash-loops the GPU subprocess), and on failure/cancel a stray
             // Agent.exe would keep churning in the background. D4Mac's Launch
             // button does a properly-flagged launch afterwards.
-            log.info("installer exited (status \(status)) — reaping wine session")
+            log.info("installer finished — reaping wine session")
             await killWineProcesses()
             await refresh()
 
@@ -447,7 +455,7 @@ final class BottleManager: ObservableObject {
             if case .empty = state {
                 throw D4MacError(
                     "Installer ran but Battle.net wasn't found afterwards.",
-                    "The installer may have failed silently. Check that it's the official Battle.net-Setup.exe from blizzard.com."
+                    "If you closed the Battle.net installer before it finished, you can ignore this and install again. Otherwise it may have failed silently — check that it's the official Battle.net-Setup.exe from blizzard.com."
                 )
             }
         } catch let err as D4MacError {
@@ -470,6 +478,49 @@ final class BottleManager: ObservableObject {
         log.info("user cancelled install — killing wine session")
         installCancelRequested = true
         await killWineProcesses()
+    }
+
+    /// Returns once the second setup stage hasn't been seen for ~3 s: it gets
+    /// to run to completion, and a stage still starting up when the stub exits
+    /// is caught by the grace window. Returns early on user cancel (which
+    /// kills the session anyway).
+    private func waitForInstallerHandoff() async {
+        var lastSeen = Date()
+        while !installCancelRequested, !Task.isCancelled,
+              Date().timeIntervalSince(lastSeen) < 3 {
+            try? await Task.sleep(for: .seconds(1))
+            if await secondStageRunning() { lastSeen = Date() }
+        }
+    }
+
+    /// Whether a `C:\ProgramData\Battle.net\Setup\bna_*\Battle.net-Setup.exe`
+    /// in *this* bottle is still held open (Wine keeps a running exe mapped).
+    /// Scoped to our prefix, unlike a name match on the process table, so a
+    /// Battle.net install in another Wine bottle can't stall us. lsof runs
+    /// off the main actor.
+    private func secondStageRunning() async -> Bool {
+        let setupDir = bottleRoot.appendingPathComponent(
+            "drive_c/ProgramData/Battle.net/Setup", isDirectory: true)
+        let fm = FileManager.default
+        let exes = ((try? fm.contentsOfDirectory(atPath: setupDir.path)) ?? [])
+            .filter { $0.hasPrefix("bna_") }
+            .map { setupDir.appendingPathComponent("\($0)/Battle.net-Setup.exe").path }
+            .filter { fm.fileExists(atPath: $0) }
+        guard !exes.isEmpty else { return false }
+        return await withCheckedContinuation { (cont: CheckedContinuation<Bool, Never>) in
+            let p = Process()
+            let out = Pipe()
+            p.executableURL = URL(fileURLWithPath: "/usr/sbin/lsof")
+            p.arguments = ["-t", "--"] + exes
+            p.standardOutput = out
+            p.standardError = FileHandle.nullDevice
+            // lsof exits 1 if any listed file isn't open, so go by its output.
+            p.terminationHandler = { _ in
+                let pids = out.fileHandleForReading.readDataToEndOfFile()
+                cont.resume(returning: !pids.isEmpty)
+            }
+            do { try p.run() } catch { cont.resume(returning: false) }
+        }
     }
 
     // MARK: - Install progress (Blizzard Agent log)
