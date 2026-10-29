@@ -78,6 +78,12 @@ struct WineProcess {
             p.executableURL = wine
             p.arguments = args
             p.environment = environment
+            // Set before run(): a handler attached after the process has
+            // already exited is never called, and the await would hang.
+            p.terminationHandler = { proc in
+                Self.log.info("wine exited status=\(proc.terminationStatus)")
+                cont.resume(returning: proc.terminationStatus)
+            }
 
             do {
                 try p.run()
@@ -87,11 +93,6 @@ struct WineProcess {
             }
 
             Self.log.info("wine pid=\(p.processIdentifier) args=\(self.args.joined(separator: " "))")
-
-            p.terminationHandler = { proc in
-                Self.log.info("wine exited status=\(proc.terminationStatus)")
-                cont.resume(returning: proc.terminationStatus)
-            }
         }
     }
 
@@ -103,6 +104,13 @@ struct WineProcess {
             p.executableURL = wine
             p.arguments = args
             p.environment = environment
+            p.terminationHandler = { proc in
+                let killed = proc.terminationReason == .uncaughtSignal
+                                  && proc.terminationStatus == SIGKILL
+                Self.log.info("wine exited status=\(proc.terminationStatus) killedBySignal=\(killed)")
+                cont.resume(returning: WineExitResult(status: proc.terminationStatus,
+                                                      killedBySignal: killed))
+            }
 
             do {
                 try p.run()
@@ -112,14 +120,6 @@ struct WineProcess {
             }
 
             Self.log.info("wine pid=\(p.processIdentifier) args=\(self.args.joined(separator: " "))")
-
-            p.terminationHandler = { proc in
-                let killed = proc.terminationReason == .uncaughtSignal
-                                  && proc.terminationStatus == SIGKILL
-                Self.log.info("wine exited status=\(proc.terminationStatus) killedBySignal=\(killed)")
-                cont.resume(returning: WineExitResult(status: proc.terminationStatus,
-                                                      killedBySignal: killed))
-            }
         }
     }
 }
