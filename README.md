@@ -76,7 +76,7 @@ entirely.
 
 - Apple Silicon Mac (M1, M2, M3, M4 — any)
 - macOS 14 (Sonoma) or later — **macOS 26.5 Tahoe strongly recommended** for D4 stability (see [Known issues](#known-issues))
-- Rosetta 2 — `softwareupdate --install-rosetta --agree-to-license` (without it, launch fails with _"Bad CPU type in executable"_)
+- Rosetta 2 — D4Mac checks for it on launch and offers to install it (asks for an administrator password). Manual install: `softwareupdate --install-rosetta --agree-to-license`
 - ~400 MB free for the `.app` bundle, plus space for the Battle.net + game install (Diablo IV is ~80 GB)
 - Apple ID (only if Gatekeeper prompts you to verify the bundle on first launch)
 
@@ -86,7 +86,7 @@ Intel Macs are not supported and will not be — Apple's GPTK is Apple-Silicon-o
 
 1. Grab the latest signed `D4Mac.dmg` from the [Releases page](https://github.com/MichaelLod/D4Mac/releases/latest).
 2. Open it, drag `D4Mac.app` to `/Applications`.
-3. Launch it. The first run unpacks Wine and runs the Battle.net installer; it takes ~2 minutes.
+3. Launch it and click **Install Battle.net**. D4Mac downloads Blizzard's installer, sets up its Wine bottle (~2 minutes on the first run) and opens Battle.net Setup — click through its prompts. If Rosetta 2 isn't installed yet, D4Mac offers to install it first.
 4. Log in to Battle.net, install your game, play.
 
 If a launch ever gets weird (Battle.net hangs, login fails repeatedly), open
